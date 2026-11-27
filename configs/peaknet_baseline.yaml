@@ -2,6 +2,7 @@
 # Architecture = peaknet/train/hydra_config/train_config/base.yaml defaults (from scratch, as upstream).
 model:
   name: peaknet_baseline
+  patch_size: 4          # 2 = stem stride 2, logits at 1/2 res (4x compute)
   hidden_sizes: [96, 192, 384, 768]
   depths: [3, 3, 9, 3]
   drop_path_rate: 0.0
