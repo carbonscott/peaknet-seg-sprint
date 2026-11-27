@@ -279,8 +279,16 @@ def _iter_split(args):
         kw["root"] = args.data_root
     ds = D.PeakDataset(stores, **kw)
     n = len(ds) if not args.limit else min(len(ds), args.limit)
-    for i in range(n):
-        it = ds[i]
+    if args.workers > 0:
+        import torch
+        from torch.utils.data import DataLoader, Subset
+        it_src = DataLoader(Subset(ds, range(n)), batch_size=None, shuffle=False, num_workers=args.workers,
+                            prefetch_factor=4, persistent_workers=False)
+    else:
+        it_src = (ds[i] for i in range(n))
+    for i, it in enumerate(it_src):
+        if hasattr(it.get("image"), "numpy"):
+            it = dict(it, image=it["image"].numpy(), label=it["label"].numpy())
         img = np.asarray(it["image"], dtype=np.float32)
         if img.ndim == 3:
             img = img[0]
@@ -313,6 +321,7 @@ def main(argv=None):
     ap.add_argument("--plain", action="store_true", help="ignore seg.infer; pad-to-32 full-image forward")
     ap.add_argument("--no-amp", action="store_true")
     ap.add_argument("--allow-missing", action="store_true")
+    ap.add_argument("--workers", type=int, default=6, help="DataLoader workers for reading stores")
     ap.add_argument("--limit", type=int, default=0, help="debug: first N images only")
     ap.add_argument("--limit-stores", type=int, default=0, help="debug: first N stores only")
     ap.add_argument("--save-probs", default=None, help="dir: save prob maps as float16 .npy")
@@ -381,8 +390,11 @@ def main(argv=None):
             import os
             os.makedirs(args.save_overlays, exist_ok=True)
             for img, tb, prob, meta in overlays:
-                name = "%s__%d.png" % (meta.get("store", "img"), int(meta.get("index", 0)))
-                viz.overlay(img, tb, prob > best, os.path.join(args.save_overlays, name), meta=meta, tol=args.tol)
+                st, ix = meta.get("store", "img"), int(meta.get("index", 0))
+                viz.save_overlay(img, tb, prob > best, os.path.join(args.save_overlays, "%s__%d.png" % (st, ix)),
+                                 title="%s  %s[%d]  (test)" % (args.model or "preds", st, ix),
+                                 extra="thr=%.3g  split totals: peak F1 %.4f, pixel IoU %.4f"
+                                 % (best, res["peak"]["f1"], res["pixel"]["iou"]), tol=args.tol, cls=True)
         except Exception as e:  # figures must never kill an eval
             print("[evaluate] overlays failed: %r" % (e,), file=sys.stderr)
     s = json.dumps(out, indent=1, default=str)
