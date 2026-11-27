@@ -48,7 +48,7 @@ One short dated entry per finding (PST).
 - 03:20 FIX: per-image standardisation (log1p, then (x-mean)/std per image or per tile) throws away absolute
   brightness, which the labels depend on. Fine-tuning lseg_b with pointwise `seg.infer.norm_log` (lseg_d) raised val
   peak F1 .809 -> .873 within 1000 steps and to .889 by step 5000 (P .85, R .93); thresholds stop pinning at the top.
-- 03:30 lseg_b whole test (thr 0.7 from val): peak F1 0.8255, pixel IoU 0.410 (landed). lseg_d result: see result.json.
+- 03:30 lseg_b whole test (thr 0.7 from val): peak F1 0.8255, pixel IoU 0.410 (landed). lseg_d (round 2) whole test (thr .998 from val): peak F1 0.8966 (P .866 R .929), pixel IoU 0.467.
 
 ## infra + A-core (h1), 2026-11-27 PST
 

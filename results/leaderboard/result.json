@@ -25,6 +25,25 @@
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/eval.log"
   },
   {
+   "statement": "lucid_segformer",
+   "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + pointwise norm_log, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 5)+dice; fine-tuned from lseg_b",
+   "peak_f1": 0.8965749607993054,
+   "peak_precision": 0.8664061912991209,
+   "peak_recall": 0.9289205155746509,
+   "pixel_iou": 0.4670746811214232,
+   "pixel_f1": 0.636742883142655,
+   "n_test_images": 1529,
+   "peak_tol_px": 3.0,
+   "threshold": 0.998,
+   "train_gpus": 1,
+   "train_wallclock_min": 64.65,
+   "upstream": [
+    "https://github.com/lucidrains/segformer-pytorch"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_d/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d/eval.log"
+  },
+  {
    "statement": "hf_upernet",
    "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice",
    "peak_f1": 0.8885877708433766,
@@ -63,25 +82,6 @@
    ],
    "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h6/xu_d/best.pt",
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/eval.log"
-  },
-  {
-   "statement": "lucid_segformer",
-   "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + log1p/per-image standardisation, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 10)+dice",
-   "peak_f1": 0.8255482639918518,
-   "peak_precision": 0.7939885425191578,
-   "peak_recall": 0.8597207303974221,
-   "pixel_iou": 0.4099673068759821,
-   "pixel_f1": 0.5815273941128933,
-   "n_test_images": 1529,
-   "peak_tol_px": 3.0,
-   "threshold": 0.7,
-   "train_gpus": 1,
-   "train_wallclock_min": 71.3,
-   "upstream": [
-    "https://github.com/lucidrains/segformer-pytorch"
-   ],
-   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_b/best.pt",
-   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/eval.log"
   },
   {
    "statement": "peaknet_baseline",
