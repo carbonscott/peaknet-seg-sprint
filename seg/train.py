@@ -160,7 +160,7 @@ def crop_collate(batch):
 
 # ----------------------------------------------------------------------------- metrics
 @torch.no_grad()
-def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1):
+def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1, mask_saturated=None):
     """Team metric (seg.evaluate.Accumulator) over val images idxs at full resolution.
     Returns counts array (len(thrs), 6): pixel tp,fp,fn ; peak tp,fp,fn."""
     from seg.evaluate import Accumulator
@@ -169,7 +169,7 @@ def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1):
     for i in idxs:
         it = val_ds[i]
         img = torch.from_numpy(_hw(it["image"]).astype(np.float32))[None, None].to(device)
-        prob = predict_prob(model, img, tile=tile)[0, 0].float().cpu().numpy()
+        prob = predict_prob(model, img, tile=tile, mask_saturated=mask_saturated)[0, 0].float().cpu().numpy()
         acc.add_prob(prob, _hw(it["label"]) == peak_label)
     model.train()
     return np.stack([acc.c[float(t)] for t in thrs]).astype(np.float64)
@@ -337,7 +337,8 @@ def main(argv=None):
             last = bool(flag.item())
         if step % val_every == 0 or last:
             tv = time.time()
-            c = validate(model, va_base, my_v, thrs, device, tile=val_tile, peak_label=int(g("peak_label", 1)))
+            c = validate(model, va_base, my_v, thrs, device, tile=val_tile, peak_label=int(g("peak_label", 1)),
+                         mask_saturated=cfg.get("infer", {}).get("mask_saturated"))
             if ddp:
                 ct = torch.from_numpy(c).to(device)
                 dist.all_reduce(ct)
