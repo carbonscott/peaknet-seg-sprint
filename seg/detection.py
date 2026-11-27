@@ -93,6 +93,7 @@ def normalize(img):
     s = s[s < 60000]
     lo, hi = np.percentile(s, [1, 99.9]) if s.size else (0.0, 1.0)
     hi = max(hi, lo + 1e-3)
+    img = np.where(img >= 60000, lo, img)  # saturated / dead-edge pixels (65535) -> background
     return np.sqrt(np.clip((img - lo) / (hi - lo), 0, 1)).astype(np.float32)
 
 
