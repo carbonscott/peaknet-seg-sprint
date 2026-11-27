@@ -501,6 +501,9 @@ def main():
     e.add_argument("--fig-dir")
     e.add_argument("--fig-every", type=int, default=0)
     a = ap.parse_args()
+    if os.environ.get("PK_NO_CUDNN") == "1":
+        import torch
+        torch.backends.cudnn.enabled = False
     train(a) if a.cmd == "train" else evaluate(a)
 
 
