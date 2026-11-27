@@ -1,0 +1,75 @@
+{
+ "statement": "peaknet_baseline",
+ "model": "PeakNet (carbonscott/peaknet ConvNeXtV2-tiny-like [96..768]x[3,3,9,3] + BiFPN 256 + seg head), from scratch, 1 binary logit, log1p+std norm, saturated pixels zeroed",
+ "upstream": [
+  {
+   "url": "https://github.com/carbonscott/peaknet",
+   "ref": "d15a00a (feat: add feature vector extraction with GAP), editable install /sdf/home/c/cwang31/codes/peaknet"
+  },
+  {
+   "url": "https://github.com/huggingface/transformers",
+   "ref": "transformers 4.57.6 (ConvNextV2Backbone used by PeakNet)"
+  }
+ ],
+ "code": [
+  "seg/models/peaknet_baseline.py",
+  "configs/peaknet_baseline.yaml",
+  "seg/train.py",
+  "seg/losses.py",
+  "seg/infer.py",
+  "seg/data.py",
+  "seg/evaluate.py",
+  "scripts/pk_train_eval.sh"
+ ],
+ "train": {
+  "slurm_jobid": "47394816.64",
+  "gpus": 1,
+  "wallclock_min": 55.39,
+  "train_images": 15989,
+  "config": "configs/peaknet_baseline.yaml",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_b/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_b/metrics.jsonl",
+  "init": "fine-tuned from pk_a step-3000 best.pt (pk_a: same model from scratch, 23 min on the same GPU, log /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_a/train.log)",
+  "node": "sdfada013 (L40S) CUDA_VISIBLE_DEVICES=4"
+ },
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h2/pk_b/best.pt",
+ "eval": {
+  "split": "test",
+  "n_images": 1529,
+  "peak_tol_px": 3,
+  "threshold": 0.999,
+  "threshold_from": "val sweep on every 2nd val image (732 imgs) over 0.9,0.95,0.97,0.98,0.99,0.995,0.998,0.999,0.9995",
+  "pixel": {
+   "iou": 0.2232677339745618,
+   "f1": 0.3650349433302468,
+   "precision": 0.4398389388915206,
+   "recall": 0.31197665679296166
+  },
+  "peak": {
+   "f1": 0.8054159033622126,
+   "precision": 0.8268148525211391,
+   "recall": 0.7850966702470462
+  },
+  "counts": {
+   "peak": {
+    "tp": 29237,
+    "fp": 6124,
+    "fn": 8003
+   },
+   "pixel": {
+    "tp": 35283,
+    "fp": 44935,
+    "fn": 77812
+   }
+  },
+  "val_peak_f1_at_thr": 0.8169451140110271,
+  "eval_cmd": "python -m seg.evaluate --model peaknet_baseline --config configs/peaknet_baseline.yaml --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h2/pk_b/best.pt --split test --workers 8 --save-overlays OUT --n-overlays 4 --out test_metrics.json  (config eval.val_thr -> val-picked threshold)",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/eval.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/test_metrics.json"
+ },
+ "proof": [
+  "results/peaknet_baseline/overlay_test_r0309_0002_17.png",
+  "results/peaknet_baseline/overlay_test_r0309_0007_11.png"
+ ],
+ "notes": "Model code is upstream PeakNet unchanged (peaknet.modeling.convnextv2_bifpn_net.PeakNet, base.yaml architecture), only the head is 1 class. Trained with the shared seg/train.py: 512 crops (4 per image, 80% centred on a peak), rot90/flip + gain jitter, AdamW lr 3e-4 wd .05, cosine, focal(alpha .75, gamma 2) x10 + dice, bf16 AMP, best checkpoint by val peak F1 on 200 val images. History: pk_a (from scratch, saturated 65535 pixels only clamped) reached val peak F1 .571 at step 3000 with precision .40: the model fired on the unlabelled saturated pixel runs along panel edges. Fix (sat_zero 60000: saturated pixels -> 0 in the input adapter) and pk_b = 55 min fine-tune from pk_a step 3000: val F1 .756 @1k, .792 @3k, .820 @6k (best.pt), .796 @8k. Threshold: models are very confident, so val-best thr is 0.999; the eval picked it on every 2nd val image (732) over 0.9..0.9995, then ran all 1529 test images at that thr. Weaknesses: 1/4-res seg head (bilinear 4x upsample) blurs 1-2 px peaks (pixel IoU .22); recall is the limiter on test (R .785). Dead ends: patch_size 2 + learned ConvTranspose upsample (h1 pk_p2: val F1 .075, checkerboard speckle). Round 2 running: pk_c = fine-tune from pk_b, lr 1e-4, focal alpha .5."
+}

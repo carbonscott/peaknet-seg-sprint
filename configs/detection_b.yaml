@@ -1,0 +1,25 @@
+# RT-DETRv2-r18 peak detector (seg/detection.py). Boxes = 8-conn peak components padded 3 px.
+hf_model: PekingU/rtdetr_v2_r18vd
+box_pad: 3
+crop: 256          # crop / tile size in image px
+scale: 2           # upscale crops 2x before the detector (finest stride is 8)
+overlap: 32
+crops_per_image: 4
+peak_centred: 0.6
+images_per_batch: 4   # -> 16 crops of 512x512 per step
+workers: 8
+lr: 2.0e-5
+lr_backbone: 2.0e-6
+weight_decay: 1.0e-4
+minutes: 40
+val_every: 300
+val_images: 120
+score_floor: 0.05
+nms_iou: 0.3
+amp: false
+final_val_limit: 500
+# det_b (retry after det_a's val collapse past it 400): 5x lower LR, EMA weights, frozen BN stats,
+# more background crops (closer to the mostly-empty tiles seen at inference)
+ema: 0.999
+freeze_bn: true
+warmup: 300
