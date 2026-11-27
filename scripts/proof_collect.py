@@ -88,6 +88,8 @@ def main():
     for m in MODELS:
         p = "results/%s/result.json" % m
         if not os.path.isfile(p):
+            p = "results/proof_report/pending_%s.json" % m
+        if not os.path.isfile(p):
             continue
         d = json.load(open(p))
         mp = metrics_path(d)

@@ -96,6 +96,11 @@ def main():
     split = load("results/split/result.json") or {}
     n_test = split.get("n_images", {}).get("test")
     res = {m: load("results/%s/result.json" % m) for m in MODELS}
+    pending = set()
+    for m in MODELS:  # a statement that lands after this page (ORDER 20): shown from its final S3DF eval
+        if not res[m] and os.path.isfile(os.path.join(OUT_DIR, "pending_%s.json" % m)):
+            res[m] = load(os.path.join(OUT_DIR, "pending_%s.json" % m))
+            pending.add(m)
     det = load("results/detection/result.json")
     imgs = Images()
     now = time.strftime("%Y-%m-%d %H:%M %Z")
@@ -127,7 +132,7 @@ def main():
         e = d["eval"]
         ok = e.get("n_images") == n_test and e.get("peak_tol_px") == 3
         H.append('<div class="verdict"><div class="k"><code>%s</code>%s</div><div>%s</div><div class="v">peak F1 %s &middot; P %s &middot; R %s<br>pixel IoU %s &middot; %s test images</div></div>'
-                 % (m, chip("PASS" if ok else "WARN"), esc(d.get("model", "")), f4(e["peak"]["f1"]), f4(e["peak"].get("precision")),
+                 % (m, chip("PASS" if ok else "WARN"), esc(d.get("model", "")) + (" <small>(lands on main last, after this page; numbers from its final whole-test eval on S3DF)</small>" if m in pending else ""), f4(e["peak"]["f1"]), f4(e["peak"].get("precision")),
                     f4(e["peak"].get("recall")), f4(e["pixel"]["iou"]), esc(e.get("n_images"))))
     if det:
         e = det["eval"]
@@ -185,6 +190,8 @@ def main():
     for m in MODELS:
         d = res[m]
         H.append('<div class="model"><h3><code>%s</code>%s</h3>' % (m, (" &mdash; " + esc(d.get("model", ""))) if d else ""))
+        if m in pending:
+            H.append('<p class="muted">This statement lands on main after this page (the run closes when it lands). Shown from its final whole-test evaluation on S3DF; the leaderboard on main is regenerated in the same commit that lands it.</p>')
         if not d:
             H.append('<p class="muted">No result on main when this page was built.</p></div>')
             continue
@@ -205,7 +212,7 @@ def main():
         if d.get("notes"):
             H.append("<p><small>%s</small></p>" % esc(d["notes"]))
         H.append('<div class="plots">')
-        for p in d.get("proof", [])[:2]:
+        for p in d.get("proof", [])[:1]:
             H.append(fig(imgs, p, "<b>%s</b> test prediction overlay (%s)" % (m, esc(os.path.basename(p)))))
         for f in ev.get("figures", []):
             if f.get("section") == m:

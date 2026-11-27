@@ -5,24 +5,24 @@
  "entries": [
   {
    "statement": "best_model",
-   "model": "Ensemble (mean prob) of 2 segmentation-models-pytorch models with 4-flip TTA: Unet-ResNet34 (run smp_r34_a, last ckpt) + UNet++-ResNet34 (run smp_upp34_a, best ckpt); ImageNet encoders, full-res decoders, 1-ch input, pointwise log norm, focal x10 + dice; member subset and threshold 0.70 picked on val",
-   "peak_f1": 0.9182422946216524,
-   "peak_precision": 0.8978267005362687,
-   "peak_recall": 0.9396079484425349,
-   "pixel_iou": 0.565079313902502,
-   "pixel_f1": 0.7221094916825462,
+   "model": "segmentation-models-pytorch Unet with EfficientNet-B4 encoder (ImageNet, smp-hub), full-res decoder, 1-ch input, pointwise log norm, focal x10 + dice; best val checkpoint (step 10000) of h1 run smp_effb4; 4-flip TTA; threshold 0.9995 picked on 300 val images",
+   "peak_f1": 0.9217205310796358,
+   "peak_precision": 0.8960795252827509,
+   "peak_recall": 0.9488721804511279,
+   "pixel_iou": 0.4946700804926619,
+   "pixel_f1": 0.6619120660120694,
    "n_test_images": 1529,
    "peak_tol_px": 3,
-   "threshold": 0.7,
+   "threshold": 0.9995,
    "train_gpus": 1,
-   "train_wallclock_min": 199.7,
+   "train_wallclock_min": 84.9,
    "upstream": [
     "https://github.com/qubvel-org/segmentation_models.pytorch",
-    "https://huggingface.co/smp-hub/resnet34.imagenet",
+    "https://huggingface.co/smp-hub/efficientnet-b4.imagenet",
     "https://github.com/pytorch/pytorch"
    ],
-   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/best_model_final1/ensemble.json",
-   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/eval.log"
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h1/smp_effb4/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h1/smp_effb4/eval.log"
   },
   {
    "statement": "lucid_segformer",

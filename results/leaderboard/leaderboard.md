@@ -1,6 +1,6 @@
 | Rank | Statement | Model | Test peak F1 (3 px) | Peak P | Peak R | Pixel IoU | Test images |
 |---:|---|---|---:|---:|---:|---:|---:|
-| 1 | `best_model` | Ensemble (mean prob) of 2 segmentation-models-pytorch models with 4-flip TTA: Unet-ResNet34 (run smp_r34_a, last ckpt) + UNet++-ResNet34 (run smp_upp34_a, best ckpt); ImageNet encoders, full-res decoders, 1-ch input, pointwise log norm, focal x10 + dice; member subset and threshold 0.70 picked on val | 0.9182 | 0.8978 | 0.9396 | 0.5651 | 1529 |
+| 1 | `best_model` | segmentation-models-pytorch Unet with EfficientNet-B4 encoder (ImageNet, smp-hub), full-res decoder, 1-ch input, pointwise log norm, focal x10 + dice; best val checkpoint (step 10000) of h1 run smp_effb4; 4-flip TTA; threshold 0.9995 picked on 300 val images | 0.9217 | 0.8961 | 0.9489 | 0.4947 | 1529 |
 | 2 | `lucid_segformer` | lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + pointwise norm_log, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 5)+dice; fine-tuned from lseg_b | 0.8966 | 0.8664 | 0.9289 | 0.4671 | 1529 |
 | 3 | `hf_upernet` | UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice | 0.8886 | 0.8631 | 0.9157 | 0.4944 | 1529 |
 | 4 | `lucid_unet` | lucidrains x-unet XUnet 2D (dim 32, mults [1, 2, 4, 8], attn at 1/8 + mid), 1-ch asinh adapter, full-res head, focal_dice loss | 0.8876 | 0.8972 | 0.8782 | 0.5186 | 1529 |

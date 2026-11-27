@@ -80,6 +80,19 @@ One short dated entry per finding (PST).
 - 03:48 xu_d whole test (1529 imgs, thr .95 from 100 val imgs, tile 1024, no TTA): peak F1 0.8876 (P .897 R .878),
   pixel IoU .519. x-unet inference is slow (~1.5 s/img on a shared GPU, 38 min for the test set): budget evals early.
 
+## detection, leaderboard, proof_report, seg/viz.py (h8, crew D-integrate), 2026-11-27 PST
+
+- 01:17 `seg/viz.py` peak matching (8-connected centroids, max-cardinality bipartite matching on a KD-tree within
+  3 px) gives the same TP count as a brute-force Hungarian match; it is the matcher used for the independent re-eval.
+- 01:23 All bridges run as the same S3DF user `cwang31`: never `pkill -f <pattern>` (it can hit other agents' jobs);
+  kill by exact PID only. `ops/sync_up.sh` exits silently (code 2) if `configs/` or `patches/` is missing locally.
+- 02:16-02:40 Detection (HF RT-DETRv2-r18 on mask-derived boxes padded 3 px, 256-px crops upscaled 2x, tiled
+  inference): val AP50 0.584 at it 400, then collapsed (0.073 @800, 0.016 @1200) with flat training losses at lr 1e-4.
+  Val-selected it-400 checkpoint: whole-test mAP50 0.583 (P .671 R .520). Many FPs are real peaks whose predicted box
+  is smaller than the padded label box (IoU < 0.5). A lower-LR + EMA retry was stopped to free the GPU (not run).
+- 04:22 Independent re-scoring of best_model final1's saved test probability maps (zarr labels + seg.viz matcher,
+  no seg/evaluate.py code) reproduces h7's whole-test numbers exactly: peak F1 0.918242, TP/FP/FN 34991/3982/2249.
+
 ## best_model + shared trainer (h7, crew D-integrate), 2026-11-27 PST
 
 - 01:50 `seg/train.py` defaults to watch: `loss.type: focal_dice` with `w_main: 1` and focal alpha .25 can collapse to
@@ -98,3 +111,8 @@ One short dated entry per finding (PST).
   (P .898 R .940). History: 0.9061 (r34 snapshot) -> 0.9141 (UNet++ alone) -> 0.9182.
 - Eval cost on the shared L40S: ~0.2 s/img single model, ~0.8 s/img for 2 members x 4 flips; val selection with many
   subsets is CPU-bound (scoring), ~4-5 s/img with 4 procs.
+- 04:32 Diverse ensemble member smp Unet + EfficientNet-b4 (smp-hub ImageNet weights; h7's recipe: focal x10 +
+  dice, crop 512, 16 crops/step, `norm_log`): 85 min on one L40S (18.7k steps, 3-5 steps/s, 12 GB). Val peak F1
+  .924 at step 10000. A 300-image val grid picked flip-TTA at thr .9995 (F1 .927; no-TTA .923 at .9999;
+  saturated masking no gain because `norm_log` already zeroes >= 60000). Whole test: peak F1 0.9217 (P .896,
+  R .949), pixel IoU .495, the best single model of the run; used as `best_model`.
