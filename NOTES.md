@@ -63,3 +63,16 @@ One short dated entry per finding (PST).
   neighbour. Use bs <= 6, `val_tile: 1024`, `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (x-unet then ~18 GB).
 - 03:48 xu_d whole test (1529 imgs, thr .95 from 100 val imgs, tile 1024, no TTA): peak F1 0.8876 (P .897 R .878),
   pixel IoU .519. x-unet inference is slow (~1.5 s/img on a shared GPU, 38 min for the test set): budget evals early.
+
+## detection, leaderboard, proof_report, seg/viz.py (h8, crew D-integrate), 2026-11-27 PST
+
+- 01:17 `seg/viz.py` peak matching (8-connected centroids, max-cardinality bipartite matching on a KD-tree within
+  3 px) gives the same TP count as a brute-force Hungarian match; it is the matcher used for the independent re-eval.
+- 01:23 All bridges run as the same S3DF user `cwang31`: never `pkill -f <pattern>` (it can hit other agents' jobs);
+  kill by exact PID only. `ops/sync_up.sh` exits silently (code 2) if `configs/` or `patches/` is missing locally.
+- 02:16-02:40 Detection (HF RT-DETRv2-r18 on mask-derived boxes padded 3 px, 256-px crops upscaled 2x, tiled
+  inference): val AP50 0.584 at it 400, then collapsed (0.073 @800, 0.016 @1200) with flat training losses at lr 1e-4.
+  Val-selected it-400 checkpoint: whole-test mAP50 0.583 (P .671 R .520). Many FPs are real peaks whose predicted box
+  is smaller than the padded label box (IoU < 0.5). A lower-LR + EMA retry was stopped to free the GPU (not run).
+- 04:22 Independent re-scoring of best_model final1's saved test probability maps (zarr labels + seg.viz matcher,
+  no seg/evaluate.py code) reproduces h7's whole-test numbers exactly: peak F1 0.918242, TP/FP/FN 34991/3982/2249.

@@ -10,7 +10,6 @@
   "h7 (best_model): false positives of the best segmentation model on test overlays look like bright spots indistinguishable from labelled peaks, i.e. likely unlabelled real peaks; precision may be capped by label completeness (Not verified)."
  ],
  "not_covered": [
-  "Independent re-evaluation of the final best_model: pending saved test probability maps from the final ensemble pass (scripts/independent_reeval.py is ready).",
   "Model statements without a result on main are listed as NOT RUN; this page is rebuilt as they land."
  ],
  "commands": [
@@ -39,11 +38,6 @@
    "caption": "<b>Dataset and split</b>: images per set and experiment (run-level split, no run in two sets) and three random test images with their labelled peaks, read from the Zarr stores on S3DF."
   },
   {
-   "file": "results/proof_report/curves_live.png",
-   "section": "curves",
-   "caption": "<b>Training in progress</b> (snapshot when the page was built): validation peak F1 and loss from the live <code>metrics.jsonl</code> of each crew's run."
-  },
-  {
    "file": "results/proof_report/curves_peaknet_baseline.png",
    "section": "peaknet_baseline",
    "caption": "<b>peaknet_baseline</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_b/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
@@ -57,6 +51,21 @@
    "file": "results/proof_report/ckpt_peaknet_baseline.png",
    "section": "peaknet_baseline",
    "caption": "<b>peaknet_baseline</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
+   "file": "results/proof_report/curves_hf_segformer.png",
+   "section": "hf_segformer",
+   "caption": "<b>hf_segformer</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h3/seg_b2_a/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+  },
+  {
+   "file": "results/proof_report/evallog_hf_segformer.png",
+   "section": "hf_segformer",
+   "caption": "<b>hf_segformer</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/eval_test.log</code>: the whole-test metrics JSON printed by the eval command."
+  },
+  {
+   "file": "results/proof_report/ckpt_hf_segformer.png",
+   "section": "hf_segformer",
+   "caption": "<b>hf_segformer</b> checkpoint on durable S3DF storage (listing + sha256)."
   },
   {
    "file": "results/proof_report/curves_hf_upernet.png",
@@ -111,7 +120,7 @@
   {
    "file": "results/proof_report/evallog_best_model.png",
    "section": "best_model",
-   "caption": "<b>best_model</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log</code>: the whole-test metrics JSON printed by the eval command."
+   "caption": "<b>best_model</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/eval.log</code>: the whole-test metrics JSON printed by the eval command."
   },
   {
    "file": "results/proof_report/ckpt_best_model.png",
@@ -127,6 +136,33 @@
    "file": "results/proof_report/leaderboard.png",
    "section": "leaderboard",
    "caption": "<b>Leaderboard</b> chart rendered on S3DF from <code>results/leaderboard/result.json</code>."
+  },
+  {
+   "file": "results/proof_report/reeval_cpu.png",
+   "section": "reeval",
+   "caption": "<b>Independent read-back 1</b>: h8's scorer (<code>scripts/independent_reeval.py</code>: labels read from Zarr, peaks matched with <code>seg.viz.match_peaks</code>, no code from <code>seg/evaluate.py</code>) re-scores the 1529 saved test probability maps of best_model final1 at the val-picked threshold 0.7. Peak F1, TP/FP/FN and pixel IoU match h7's evaluation exactly."
+  },
+  {
+   "file": "results/proof_report/reeval_overlay_r0028_0007_18.png",
+   "section": "reeval",
+   "caption": "<b>Independent read-back overlay</b>: best_model final1 prediction on test image mfxl1027522_r0028.0007[18], rendered by the h8 re-evaluation from the saved probability map (matched green, missed red, false yellow)."
+  }
+ ],
+ "reeval": [
+  {
+   "statement": "best_model",
+   "what": "re-score of saved final1 test probability maps",
+   "reported_f1": 0.9182422946216524,
+   "tolerance": 0.002,
+   "n_images_scored": 1529,
+   "peak": {
+    "f1": 0.9182422946216524,
+    "tp": 34991,
+    "fp": 3982,
+    "fn": 2249
+   },
+   "pixel_iou": 0.565079313902502,
+   "log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h8/reeval_best_final1/reeval.log"
   }
  ]
 }
