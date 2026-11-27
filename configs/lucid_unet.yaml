@@ -1,4 +1,5 @@
 # lucid_unet: lucidrains x-unet (XUnet 2D), binary peak logit. See seg/models/lucid_unet.py.
+# Train: python -m seg.train --model lucid_unet --config configs/lucid_unet.yaml --out <rundir> --time-min N
 model:
   name: lucid_unet
   dim: 32
@@ -17,11 +18,26 @@ model:
   init_prior: 0.01
 train:
   crop: 512
-  batch_size: 8
-  epochs: 20
-  lr: 3.0e-4
-  weight_decay: 1.0e-4
-  loss: focal_dice
+  batch_size: 6
+  crops_per_image: 2
+  pos_frac: 0.8
+  lr: 6.0e-4
+  weight_decay: 0.01
+  max_steps: 20000
+  warmup: 300
+  val_every: 1500
+  val_images: 100
+  num_workers: 4
   amp: true
-infer:
-  tile: null
+  grad_clip: 1.0
+  gain_jitter: 0.2
+  rot90: true
+  val_tile: 1024
+  seed: 0
+  thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995]
+loss:
+  type: focal_dice
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0

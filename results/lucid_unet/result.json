@@ -1,0 +1,75 @@
+{
+ "statement": "lucid_unet",
+ "model": "lucidrains x-unet XUnet 2D (dim 32, mults [1, 2, 4, 8], attn at 1/8 + mid), 1-ch asinh adapter, full-res head, focal_dice loss",
+ "upstream": [
+  {
+   "url": "https://github.com/lucidrains/x-unet",
+   "ref": "x-unet 0.5.0 (PyPI)"
+  },
+  {
+   "url": "https://github.com/lucidrains/x-unet/blob/main/x_unet/x_unet.py",
+   "ref": "XUnet class used unmodified; attention -> SDPA, 1-frame Conv3d -> conv2d at runtime"
+  }
+ ],
+ "code": [
+  "seg/models/lucid_unet.py",
+  "configs/lucid_unet.yaml",
+  "seg/train.py",
+  "seg/losses.py",
+  "seg/data.py",
+  "seg/infer.py",
+  "seg/evaluate.py",
+  "scripts/lucid_unet_run.sh"
+ ],
+ "train": {
+  "slurm_jobid": "47394816.71",
+  "gpus": 1,
+  "wallclock_min": 54.94,
+  "train_images": 15989,
+  "config": "configs/lucid_unet.yaml",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h6/xu_d/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h6/xu_d/metrics.jsonl",
+  "steps": 2938,
+  "crop": 512,
+  "batch_size": 6,
+  "lr": 0.0006,
+  "best_val": {
+   "f1": 0.8886671987230647,
+   "step": 2938,
+   "thr": 0.95
+  }
+ },
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h6/xu_d/best.pt",
+ "eval": {
+  "split": "test",
+  "n_images": 1529,
+  "peak_tol_px": 3,
+  "threshold": 0.95,
+  "threshold_source": "val (ckpt thr from seg.train sweep)",
+  "pixel": {
+   "iou": 0.5185712091696103,
+   "f1": 0.6829725284376714,
+   "precision": 0.8579949713796609,
+   "recall": 0.56725761527919
+  },
+  "peak": {
+   "f1": 0.8876012647062815,
+   "precision": 0.897182673579678,
+   "recall": 0.8782223415682062
+  },
+  "counts": {
+   "peak_tp": 32705,
+   "peak_fp": 3748,
+   "peak_fn": 4535
+  },
+  "tile": 1024,
+  "tta": false,
+  "eval_cmd": "cd $PK/work/h6 && python -m seg.evaluate --model lucid_unet --config configs/lucid_unet.yaml --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h6/xu_d/best.pt --split test --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/test_metrics.json --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h6/xu_d --n-overlays 4 --workers 6 --tile 1024",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/eval.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/test_metrics.json"
+ },
+ "proof": [
+  "results/lucid_unet/overlay_test.png"
+ ],
+ "notes": "lucidrains x-unet XUnet used unmodified (5.9M params, dim 32, 4 stages, full-res output, which suits 1-2 px peaks); glue = asinh((x-median)/32)/3 input adapter, pad to /32, runtime swaps (einsum attention -> F.scaled_dot_product_attention; 1-frame Conv3d -> conv2d, same weights, ~1.7x faster). Trained from scratch with the shared seg/train.py: random 512 crops (80% centred on peaks), bs 6, AdamW lr 6e-4 cosine, focal(alpha .25) x10 + dice, 2938 steps / 55 min on one shared L40S (sdfada013 idx3); best ckpt + threshold 0.95 picked on 100 val images (val peak F1 0.889). Whole-test eval: tile 1024, no TTA, no saturated mask. Dead ends: focal_dice with w_main=1 collapsed to all-background (val F1 0.000 at step 1000, run xu_c); bs8 with full-res val used 35 GB on a shared GPU (xu_a, stopped). Main errors: false peaks on saturated 65535 pixel lines; round 2 (xu_ft) fine-tunes with saturated pixels zeroed in the adapter."
+}
