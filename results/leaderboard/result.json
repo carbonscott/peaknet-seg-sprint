@@ -65,23 +65,23 @@
   },
   {
    "statement": "hf_upernet",
-   "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice",
-   "peak_f1": 0.8885877708433766,
-   "peak_precision": 0.8630507959808661,
-   "peak_recall": 0.9156820622986036,
-   "pixel_iou": 0.4943854846684677,
-   "pixel_f1": 0.6616572360218663,
+   "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch adapter (saturated px zeroed, log1p, per-image std), PixelShuffle(4) full-res head, focal+dice; fine-tuned (upn_ft) from upn_a, flip-TTA",
+   "peak_f1": 0.8911756114401042,
+   "peak_precision": 0.881415138939959,
+   "peak_recall": 0.9011546723952739,
+   "pixel_iou": 0.4657113528369675,
+   "pixel_f1": 0.6354748524469798,
    "n_test_images": 1529,
    "peak_tol_px": 3.0,
-   "threshold": 0.5,
+   "threshold": 0.9999,
    "train_gpus": 1,
-   "train_wallclock_min": 89.84,
+   "train_wallclock_min": 57.67,
    "upstream": [
     "https://huggingface.co/openmmlab/upernet-convnext-tiny",
     "https://github.com/huggingface/transformers"
    ],
-   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h4/upn_a/best.pt",
-   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/eval_test.log"
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h4/upn_ft/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_ft/eval_test.log"
   },
   {
    "statement": "lucid_unet",

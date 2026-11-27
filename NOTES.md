@@ -136,3 +136,7 @@ One short dated entry per finding (PST).
   the best threshold moved from .998 down to .5. Dead end: a lower-lr, focal alpha .5 continuation (pk_c) did not help.
 - 04:51 pk_d (pointwise-norm fine-tune of pk_b, 50 min) whole test: peak F1 .895 (P .894 R .896), pixel IoU .307 at
   a val-picked thr .99, up from pk_b's .805. This is the landed peaknet_baseline.
+- 04:58 Round 2 upn_ft (fine-tune of upn_a best.pt; saturated px zeroed in the adapter, focal alpha .5, lr 5e-5,
+  pos_frac .5): its step-1000 checkpoint + flip-TTA at thr .9999 won on the same 400 val images (.898 vs .8925), and gave
+  whole-test peak F1 0.8912 (P .881, R .901). The fine-tune drifted to over-confidence again after step 1000.
+  Not tried for lack of time: the pointwise log normalisation that helped PeakNet and lucid models (h2, h5).
