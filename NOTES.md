@@ -82,3 +82,8 @@ One short dated entry per finding (PST).
   (P .898 R .940). History: 0.9061 (r34 snapshot) -> 0.9141 (UNet++ alone) -> 0.9182.
 - Eval cost on the shared L40S: ~0.2 s/img single model, ~0.8 s/img for 2 members x 4 flips; val selection with many
   subsets is CPU-bound (scoring), ~4-5 s/img with 4 procs.
+- 04:32 Diverse ensemble member smp Unet + EfficientNet-b4 (smp-hub ImageNet weights; h7's recipe: focal x10 +
+  dice, crop 512, 16 crops/step, `norm_log`): 85 min on one L40S (18.7k steps, 3-5 steps/s, 12 GB). Val peak F1
+  .924 at step 10000. A 300-image val grid picked flip-TTA at thr .9995 (F1 .927; no-TTA .923 at .9999;
+  saturated masking no gain because `norm_log` already zeroes >= 60000). Whole test: peak F1 0.9217 (P .896,
+  R .949), pixel IoU .495, the best single model of the run; used as `best_model`.
