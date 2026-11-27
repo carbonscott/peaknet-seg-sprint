@@ -58,6 +58,9 @@ def main():
     ap.add_argument("--tol", type=float, default=3.0)
     ap.add_argument("--procs", type=int, default=8)
     ap.add_argument("--out")
+    ap.add_argument("--overlays", nargs="*", default=[], help="store__idx ids to render with seg.viz from the saved probs")
+    ap.add_argument("--fig-dir")
+    ap.add_argument("--title", default="independent re-evaluation")
     a = ap.parse_args()
     sp = json.load(open(a.split_json))
     _A.update(root=a.root, probs=a.probs, thr=a.thr, tol=a.tol, peak_label=sp.get("peak_label", 1))
@@ -92,6 +95,15 @@ def main():
            "pixel": {"iou": 1.0 if xden == 0 else tot["xtp"] / xden, "f1": xf, "precision": xp, "recall": xr},
            "scorer": "scripts/independent_reeval.py (zarr labels + seg.viz.match_peaks)", "minutes": (time.time() - t0) / 60}
     print(json.dumps(res), flush=True)
+    for oid in a.overlays:
+        import zarr
+        from seg.viz import save_overlay
+        st, ix = oid.rsplit("__", 1)
+        z = zarr.open(os.path.join(a.root, st), "r")
+        prob = np.load(os.path.join(a.probs, oid + ".npy")).astype(np.float32)
+        save_overlay(np.asarray(z["images"][int(ix)], np.float32), np.asarray(z["labels"][int(ix)]), prob > a.thr,
+                     os.path.join(a.fig_dir, "reeval_%s.png" % oid.replace(".zarr", "")), title="%s: %s[%s]" % (a.title, st, ix),
+                     extra="thr %.3f, scored by scripts/independent_reeval.py" % a.thr, cls=_A["peak_label"])
     if a.out:
         json.dump(res, open(a.out, "w"), indent=1)
 
