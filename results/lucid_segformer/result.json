@@ -1,0 +1,69 @@
+{
+ "statement": "lucid_segformer",
+ "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + log1p/per-image standardisation, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 10)+dice",
+ "upstream": [
+  {
+   "url": "https://github.com/lucidrains/segformer-pytorch",
+   "ref": "segformer-pytorch 0.0.6 (pip)"
+  }
+ ],
+ "code": [
+  "seg/models/lucid_segformer.py",
+  "configs/lucid_segformer.yaml",
+  "seg/train.py",
+  "seg/evaluate.py",
+  "seg/infer.py",
+  "scripts/lucid_finish.sh"
+ ],
+ "train": {
+  "slurm_jobid": "47394816.63",
+  "gpus": 1,
+  "wallclock_min": 71.3,
+  "train_images": 15989,
+  "config": "configs/lucid_segformer.yaml",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_b/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_b/metrics.jsonl"
+ },
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_b/best.pt",
+ "eval": {
+  "split": "test",
+  "n_images": 1529,
+  "peak_tol_px": 3.0,
+  "threshold": 0.7,
+  "threshold_from": "val sweep (--val-thr)",
+  "tta": false,
+  "tile": 1024,
+  "pixel": {
+   "iou": 0.4099673068759821,
+   "f1": 0.5815273941128933,
+   "precision": 0.7221187396699635,
+   "recall": 0.4867589194924621
+  },
+  "peak": {
+   "f1": 0.8255482639918518,
+   "precision": 0.7939885425191578,
+   "recall": 0.8597207303974221
+  },
+  "counts": {
+   "peak": {
+    "tp": 32016,
+    "fp": 8307,
+    "fn": 5224
+   },
+   "pixel": {
+    "tp": 55050,
+    "fp": 21184,
+    "fn": 58045
+   }
+  },
+  "eval_cmd": "python -m seg.evaluate --model lucid_segformer --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_b/best.pt --split test --out .../evals/h5/lseg_b/metrics.json --save-overlays .../figures/h5/lseg_b --n-overlays 6 --tile 1024 --workers 4 --val-every 2 --val-thr 0.7,0.9,0.95,0.98,0.99,0.995,0.998,0.999,0.9995,0.9998,0.9999 (via scripts/lucid_finish.sh, same srun step as training)",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/eval.log",
+  "remote_metrics": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/metrics.json"
+ },
+ "proof": [
+  "results/lucid_segformer/overlay_test_r0309_0007_11.png",
+  "results/lucid_segformer/overlay_test_r0309_0000_0.png"
+ ],
+ "notes": "Run lseg_b: seg.train 72 min on 1 L40S (sdfada013 idx3, shared with h6), crop 512, 16 crops/step, lr 6e-4 AdamW cosine, 11193 steps; best.pt = step 6000 (val F1 0.809 on 200 val imgs). Test threshold 0.7 picked on VAL (every 2nd val image, val peak F1 0.817), whole test 1529 imgs, tiled 1024 inference, no TTA. Learned: (1) upstream Segformer predicts at 1/4 res; peaks are 1-2 px, so a PixelShuffle(4) head gives full-res logits. (2) Saturated 65535 pixels (lines at panel edges) caused a precision collapse (lseg_a: val P 0.10, 54/55 FPs on saturated runs); zeroing pixels >= 60000 in the adapter fixed it. (3) Val F1 oscillated 0.65-0.81 and the best threshold sat at the sweep top (0.998) for most steps: BCE pos_weight 10 + dice is overconfident; pos_weight 2 (lseg_c, stopped) did not fix it. Remaining FPs are real-looking bright spots the labeller did not mark; suspected cause is per-image standardisation discarding absolute brightness -> round 2 lseg_d fine-tunes with pointwise norm_log.",
+ "remote_train_and_eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_b/train_and_eval_step.log"
+}
