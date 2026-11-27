@@ -1,0 +1,8 @@
+# hf_upernet: transformers UperNetForSemanticSegmentation, ConvNeXt backbone (openmmlab/upernet-convnext-*)
+model:
+  name: hf_upernet
+  pretrained: openmmlab/upernet-convnext-tiny
+  stem_stride: 4
+  aux_head: false
+  pad_multiple: 32
+  clip_max: 65000.0
