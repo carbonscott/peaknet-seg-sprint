@@ -5,24 +5,24 @@
  "entries": [
   {
    "statement": "best_model",
-   "model": "segmentation-models-pytorch Unet (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; snapshot at step 6000 of run smp_r34_a; threshold 0.97 picked on val",
-   "peak_f1": 0.906115050381191,
-   "peak_precision": 0.8995448290462581,
-   "peak_recall": 0.912781954887218,
-   "pixel_iou": 0.5088215410490213,
-   "pixel_f1": 0.6744621907972745,
+   "model": "segmentation-models-pytorch UNet++ (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; best val checkpoint (step 5000) of run smp_upp34_a; threshold 0.99 picked on val",
+   "peak_f1": 0.9141432133950838,
+   "peak_precision": 0.8986225323614101,
+   "peak_recall": 0.9302094522019334,
+   "pixel_iou": 0.5271411140058702,
+   "pixel_f1": 0.6903633320736382,
    "n_test_images": 1529,
    "peak_tol_px": 3,
-   "threshold": 0.97,
+   "threshold": 0.99,
    "train_gpus": 1,
-   "train_wallclock_min": 24,
+   "train_wallclock_min": 89.8,
    "upstream": [
     "https://github.com/qubvel-org/segmentation_models.pytorch",
     "https://huggingface.co/smp-hub/resnet34.imagenet",
     "https://github.com/pytorch/pytorch"
    ],
-   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt",
-   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log"
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_upp34_a/best_eval.log"
   },
   {
    "statement": "hf_upernet",
