@@ -1,8 +1,11 @@
 {
  "statement": "best_model",
- "model": "segmentation-models-pytorch Unet (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; snapshot at step 6000 of run smp_r34_a; threshold 0.97 picked on val",
+ "model": "Ensemble (mean prob) of 2 segmentation-models-pytorch models with 4-flip TTA: Unet-ResNet34 (run smp_r34_a, last ckpt) + UNet++-ResNet34 (run smp_upp34_a, best ckpt); ImageNet encoders, full-res decoders, 1-ch input, pointwise log norm, focal x10 + dice; member subset and threshold 0.70 picked on val",
  "based_on": [
-  "smp_unet (h7 run smp_r34_a, step-6000 best.pt snapshot)"
+  "smp_unet Unet-r34 (h7 run smp_r34_a, last.pt, step 25000)",
+  "smp_unet UNet++-r34 (h7 run smp_upp34_a, best.pt, step 5000)",
+  "flip TTA (seg.infer.predict_prob tta=True)",
+  "val-picked member subset + threshold (seg.evaluate_ensemble --subsets)"
  ],
  "upstream": [
   {
@@ -25,60 +28,103 @@
   "seg/losses.py",
   "seg/infer.py",
   "seg/evaluate.py",
-  "seg/data.py"
+  "seg/evaluate_ensemble.py",
+  "seg/data.py",
+  "scripts/best_final.sh"
  ],
  "train": {
   "slurm_jobid": "47394816.51",
   "gpus": 1,
-  "wallclock_min": 24,
+  "wallclock_min": 199.7,
   "train_images": 15989,
   "config": "configs/smp_unet.yaml",
   "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/train.log",
-  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/metrics.jsonl",
-  "node": "sdfada013 (L40S idx 1, shared with a 2nd run)",
-  "steps_at_snapshot": 6000,
-  "crops_per_step": 16,
+  "runs": [
+   {
+    "name": "smp_r34_a",
+    "slurm_jobid": "47394816.51",
+    "gpus": 1,
+    "wallclock_min": 109.9,
+    "steps": 25001,
+    "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/train.log",
+    "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/metrics.jsonl",
+    "command": "python -m seg.train --model smp_unet --config configs/smp_unet.yaml --out $PK/runs/h7/smp_r34_a --time-min 110 --set train.num_workers=7"
+   },
+   {
+    "name": "smp_upp34_a",
+    "slurm_jobid": "47394816.57",
+    "gpus": 1,
+    "wallclock_min": 89.8,
+    "steps": 10469,
+    "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_upp34_a/train.log",
+    "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_upp34_a/metrics.jsonl",
+    "command": "python -m seg.train --model smp_unet --config configs/smp_unet.yaml --out $PK/runs/h7/smp_upp34_a --time-min 90 --set model.arch=UnetPlusPlus --set train.num_workers=5 --set train.seed=1 --set train.max_steps=25000"
+   }
+  ],
+  "node": "sdfada013, both runs concurrently on L40S idx 1",
   "crop": 512,
-  "command": "python -m seg.train --model smp_unet --config configs/smp_unet.yaml --out $PK/runs/h7/smp_r34_a --time-min 110 --set train.num_workers=7"
+  "crops_per_step": 16
  },
- "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt",
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/best_model_final1/ensemble.json",
  "eval": {
   "split": "test",
   "n_images": 1529,
   "peak_tol_px": 3,
-  "threshold": 0.97,
-  "threshold_from": "val sweep (seg.evaluate --val-thr, every 3rd val image)",
-  "tta": false,
+  "threshold": 0.7,
+  "threshold_from": "val (seg.evaluate_ensemble --subsets, 300 val imgs)",
+  "tta": true,
   "pixel": {
-   "iou": 0.5088215410490213,
-   "f1": 0.6744621907972745,
-   "precision": 0.8827307054179301,
-   "recall": 0.545709359388125
+   "iou": 0.565079313902502,
+   "f1": 0.7221094916825462,
+   "precision": 0.8647055195806352,
+   "recall": 0.6198859366019718
   },
   "peak": {
-   "f1": 0.906115050381191,
-   "precision": 0.8995448290462581,
-   "recall": 0.912781954887218
+   "f1": 0.9182422946216524,
+   "precision": 0.8978267005362687,
+   "recall": 0.9396079484425349
   },
   "counts": {
    "pixel": {
-    "tp": 61717,
-    "fp": 8199,
-    "fn": 51378
+    "tp": 70106,
+    "fp": 10969,
+    "fn": 42989
    },
    "peak": {
-    "tp": 33992,
-    "fp": 3796,
-    "fn": 3248
+    "tp": 34991,
+    "fp": 3982,
+    "fn": 2249
    }
   },
-  "eval_cmd": "python -m seg.evaluate --model smp_unet --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt --split test --val-thr 0.5,0.7,0.8,0.9,0.95,0.97,0.98,0.99,0.995 --val-every 3 --workers 4 --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h7/smp_r34_a/snap1 --n-overlays 4 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_test.json",
-  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log",
-  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_test.json",
-  "val_threshold_sweep_images": 488
+  "eval_cmd": "python -m seg.evaluate_ensemble --member smp_unet:/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/best.pt --member smp_unet:/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/last.pt --member smp_unet:/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt --member smp_unet:/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/last.pt --subsets '0;1;2;3;0,2;1,3;0,3;1,2;0,1,2,3' --tta --val-images 300 --procs 3 --workers 3 --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h7/best_model/final1 --n-overlays 4 --save-probs $PK/runs/h7/final/test_probs_final1 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/test.json",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/eval.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/test.json",
+  "members": [
+   {
+    "name": "smp_unet",
+    "ckpt": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/last.pt",
+    "ckpt_thr": 0.9
+   },
+   {
+    "name": "smp_unet",
+    "ckpt": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt",
+    "ckpt_thr": 0.9
+   }
+  ],
+  "weights": [
+   1.0,
+   1.0
+  ],
+  "val_images_for_selection": 300
  },
  "proof": [
-  "results/best_model/overlay_test_snap1.png"
+  "results/best_model/overlay_test_final1_a.png",
+  "results/best_model/overlay_test_final1_b.png",
+  "results/best_model/train_curves.png"
  ],
- "notes": "EARLY landing (lead ORDER 14) on a snapshot of a still-running run: best.pt at step 6000 (val peak F1 0.917 on 150 val images at thr 0.9 in-training). Threshold re-picked by seg.evaluate on every 3rd val image (488 imgs) over 0.5..0.995 -> 0.97 (val F1 0.911), then the whole test split (1529 images) at 0.97. Single model, no TTA, no post-processing. Findings: full-res decoder matters for 1-2 px peaks; FPs are confident 1-2 px blobs far from labeled peaks (likely unlabeled weak peaks/hot pixels), min-size/closing post-processing did not help on val; higher thresholds did. Will be replaced by the final ensemble (smp Unet r34 + smp UNet++ r34 [+ team models], flip TTA) if it beats this on test with val-picked threshold."
+ "notes": "Final1. One seg.evaluate_ensemble process (slurm step on sdfada013 idx1, 46.6 min): each of 4 candidate checkpoints (r34 best/last, UNet++ best/last) predicted once per val image with 4-flip TTA; 9 member subsets x 21 thresholds scored with seg.evaluate.Accumulator on 300 evenly spaced val images; best = {r34 last, UNet++ best} at thr 0.70 (val peak F1 0.9251; best single on val: UNet++ best 0.9248). Then the WHOLE test split (1529 images) with that subset + threshold only. Test peak F1 0.9182 (P .898, R .940). Independent check: h8 re-scored the saved test prob maps ($PK/runs/h7/final/test_probs_final1, float16) with separate code and got the same TP/FP/FN. History: 0.9061 (r34 step-6000 snapshot, no TTA) -> 0.9141 (UNet++ best alone, no TTA) -> 0.9182 (this). Findings: full-res decoders matter for 1-2 px peaks; FPs are confident 1-2 px spots far from labeled peaks that look like real unlabeled peaks, so precision is capped near 0.9 by the labels; min-size/closing post-processing did not help; flip TTA +0.002; saturated-pixel masking no effect for these models; val F1 fluctuates +-0.03 between checkpoints, so checkpoint choice on val matters.",
+ "checkpoints": [
+  "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/last.pt",
+  "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt"
+ ]
 }

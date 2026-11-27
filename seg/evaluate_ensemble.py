@@ -62,7 +62,8 @@ def ens_prob(members, weights, img, tta, tile, mask_saturated=None):
     return (acc / sum(weights))[0, 0].float().cpu().numpy()
 
 
-def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0, ms=None):
+def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0, ms=None,
+        save_probs=None):
     acc = Accumulator(thrs)
     t0 = time.time()
     for i, it in enumerate(loader):
@@ -71,6 +72,10 @@ def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, ov
         tb = np.asarray(it["label"]) == peak_label
         prob = ens_prob(members, weights, img, tta, tile, ms)
         acc.add_prob(prob, tb)
+        if save_probs:
+            meta = it["meta"]
+            np.save(os.path.join(save_probs, "%s__%d.npy" % (meta.get("store", "img"), int(meta.get("index", i)))),
+                    prob.astype(np.float16))
         if overlays is not None and len(overlays) < n_overlays and i % 97 == 0:
             overlays.append((img, tb, prob, it["meta"]))
         if (i + 1) % log_every == 0:
@@ -78,6 +83,47 @@ def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, ov
             print("[ensemble] %d images %.0f s; thr %.2f peak F1 %.4f" % (i + 1, time.time() - t0, thrs[len(thrs) // 2],
                                                                          r["peak"]["f1"]), file=sys.stderr, flush=True)
     return acc
+
+
+def _score(args):
+    prob, tb, thrs = args
+    acc = Accumulator(thrs)
+    acc.add_prob(prob, tb)
+    return np.stack([acc.c[float(t)] for t in thrs])
+
+
+def select_subsets(members, loader, subsets, thrs, peak_label, tta, tile, ms, procs=4):
+    """One pass over val: every member predicted once per image; every subset (mean prob) scored at every thr.
+    Returns list of (subset, counts (len(thrs),6))."""
+    import concurrent.futures as cf
+    import multiprocessing as mp
+    import torch
+    from seg.infer import predict_prob
+    from seg.evaluate import finish_peak
+    C = [np.zeros((len(thrs), 6), np.int64) for _ in subsets]
+    dev = next(members[0]["model"].parameters()).device
+    t0 = time.time()
+    with cf.ProcessPoolExecutor(procs, mp_context=mp.get_context("fork")) as pool:
+        pend = []
+        for i, it in enumerate(loader):
+            img = np.asarray(it["image"], dtype=np.float32)
+            img = img[0] if img.ndim == 3 else img
+            tb = np.asarray(it["label"]) == peak_label
+            x = torch.as_tensor(img).reshape(1, 1, *img.shape[-2:]).to(dev)
+            probs = [predict_prob(m["model"], x, tile=tile, tta=tta, mask_saturated=ms)[0, 0].float() for m in members]
+            for k, sub in enumerate(subsets):
+                p = sum(probs[j] for j in sub) / len(sub)
+                pend.append((k, pool.submit(_score, (p.cpu().numpy(), tb, thrs))))
+            while len(pend) > 4 * procs * len(subsets):
+                k, f = pend.pop(0)
+                C[k] += f.result()
+            if (i + 1) % 50 == 0:
+                best = max(finish_peak(*C[k][j, 3:])["f1"] for k in range(len(subsets)) for j in range(len(thrs)))
+                print("[ensemble-select] %d images %.0f s (running best F1 %.4f)" % (i + 1, time.time() - t0, best),
+                      file=sys.stderr, flush=True)
+        for k, f in pend:
+            C[k] += f.result()
+    return list(zip(subsets, C))
 
 
 def main(argv=None):
@@ -95,7 +141,12 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--save-overlays", default=None)
+    ap.add_argument("--save-probs", default=None, help="dir: float16 <store>__<idx>.npy prob maps of the test pass")
     ap.add_argument("--n-overlays", type=int, default=4)
+    ap.add_argument("--subsets", default=None,
+                    help='choose the member subset on VAL too, e.g. "0;1;0,1;0,1,2,3" (indices into --member); '
+                         'only the chosen subset runs on test')
+    ap.add_argument("--procs", type=int, default=4, help="CPU processes scoring subsets in --subsets mode")
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
 
@@ -110,7 +161,34 @@ def main(argv=None):
     out = {"members": [dict(name=m["name"], ckpt=m["ckpt"], ckpt_thr=m["ckpt_thr"]) for m in members],
            "weights": weights, "tta": a.tta, "tile": a.tile, "mask_saturated": a.mask_saturated, "argv": sys.argv if argv is None else argv}
 
-    if a.thr is None:
+    if a.subsets:
+        from seg.data import PeakDataset
+        from seg.evaluate import finish_peak, finish_pixel
+        subsets = [[int(i) for i in g.split(",")] for g in a.subsets.split(";") if g.strip()]
+        nval = len(PeakDataset(split["val"]))
+        idxs = np.linspace(0, nval - 1, min(a.val_images, nval)).round().astype(int).tolist()
+        res = select_subsets(members, make_loader(split["val"], idxs, a.workers), subsets, SWEEP, peak_label,
+                             a.tta, a.tile, a.mask_saturated, a.procs)
+        table = []
+        for sub, c in res:
+            for j, t in enumerate(SWEEP):
+                table.append(dict(subset=sub, members=[a.member[i] for i in sub], thr=t,
+                                  peak=finish_peak(*c[j, 3:]), pixel=finish_pixel(*c[j, :3])))
+        table.sort(key=lambda r: (-r["peak"]["f1"], len(r["subset"]), -r["thr"]))
+        best = table[0]
+        out["val_select"] = {"n_images": len(idxs), "subsets": subsets, "best": best,
+                             "best_per_subset": [max((r for r in table if r["subset"] == sub),
+                                                     key=lambda r: r["peak"]["f1"]) for sub in subsets]}
+        print("[ensemble-select] val best: subset %s thr %.3f peak F1 %.4f (%.0f s)"
+              % (best["subset"], best["thr"], best["peak"]["f1"], time.time() - t0), file=sys.stderr, flush=True)
+        members = [members[i] for i in best["subset"]]
+        weights = [weights[i] for i in best["subset"]]
+        out["members"] = [dict(name=m["name"], ckpt=m["ckpt"], ckpt_thr=m["ckpt_thr"]) for m in members]
+        out["weights"] = weights
+        thr = best["thr"]
+        a.thr = thr
+        out["val"] = {"n_images": len(idxs), "threshold": thr, "peak": best["peak"], "pixel": best["pixel"]}
+    elif a.thr is None:
         from seg.data import PeakDataset
         nval = len(PeakDataset(split["val"]))
         idxs = np.linspace(0, nval - 1, min(a.val_images, nval)).round().astype(int).tolist()
@@ -121,14 +199,17 @@ def main(argv=None):
                                                                      time.time() - t0), file=sys.stderr, flush=True)
     else:
         thr = a.thr
+    if a.save_probs:
+        os.makedirs(a.save_probs, exist_ok=True)
+        out["save_probs"] = a.save_probs
     stores = split[a.split]
     idxs = list(range(a.limit)) if a.limit else None
     ovl = [] if a.save_overlays else None
     tacc = run(members, weights, make_loader(stores, idxs, a.workers), [thr], peak_label, a.tta, a.tile,
-               overlays=ovl, n_overlays=a.n_overlays, ms=a.mask_saturated)
+               overlays=ovl, n_overlays=a.n_overlays, ms=a.mask_saturated, save_probs=a.save_probs)
     res = tacc.result(thr)
     out.update({"split": a.split, "n_images": tacc.n, "peak_tol_px": tacc.tol, "threshold": thr,
-                "threshold_from": "val" if a.thr is None else "given", "pixel": res["pixel"], "peak": res["peak"],
+                "threshold_from": "val" if (a.thr is None or a.subsets) else "given", "pixel": res["pixel"], "peak": res["peak"],
                 "seconds": round(time.time() - t0, 1)})
     if ovl:
         try:
