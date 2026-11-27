@@ -1,0 +1,27 @@
+# lucid_unet: lucidrains x-unet (XUnet 2D), binary peak logit. See seg/models/lucid_unet.py.
+model:
+  name: lucid_unet
+  dim: 32
+  dim_mults: [1, 2, 4, 8]
+  num_blocks_per_stage: [2, 2, 2, 2]
+  num_self_attn_per_stage: [0, 0, 0, 1]
+  nested_unet_depths: [0, 0, 0, 0]
+  consolidate_upsample_fmaps: true
+  use_convnext: false
+  attn_heads: 8
+  attn_dim_head: 32
+  sdpa_attention: true
+  pad_multiple: 32
+  norm_scale: 32.0
+  norm_div: 3.0
+  init_prior: 0.01
+train:
+  crop: 512
+  batch_size: 8
+  epochs: 20
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  loss: focal_dice
+  amp: true
+infer:
+  tile: null
