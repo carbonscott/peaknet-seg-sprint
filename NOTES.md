@@ -50,3 +50,16 @@ One short dated entry per finding (PST).
 - 02:00 onward: every focal x10 + dice model picked the TOP of its threshold sweep (0.9, later 0.998) with recall
   far above precision. Sweep val thresholds to 0.9999 before testing (`scripts/val_grid.py` does this in one pass,
   together with flip-TTA and saturated-pixel masking).
+
+## lucid_unet (h6, crew C-lucid), 2026-11-27 PST
+
+- 01:25 lucidrains x-unet 0.5.0 runs every 2D conv as `nn.Conv3d` with a 1-frame kernel and builds its attention
+  with einsum (full N x N matrix). Wrapper glue, same weights and maths: einsum attention -> `F.scaled_dot_product_attention`
+  (max |diff| 6e-6) so full 1920x1920 inference fits, and 1-frame Conv3d -> `F.conv2d` (~1.7x more crops/s in training).
+- 02:09 Dead end: `focal_dice` with the default `w_main: 1` (alpha .25) on ~1e-5 positive pixels collapsed to all
+  background (xu_c: val peak F1 0.000 at step 1000, loss flat at ~0.98). A 1-crop CPU overfit test learned fine, so
+  the wrapper was not at fault; `w_main: 10` (as h7's smp runs) fixed it (xu_d val F1 .75 at step 1500, .89 at 2938).
+- 01:45 Sharing one L40S between two training runs: bs 8 at 512^2 plus full-res validation reached 35 GB and OOMed the
+  neighbour. Use bs <= 6, `val_tile: 1024`, `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (x-unet then ~18 GB).
+- 03:48 xu_d whole test (1529 imgs, thr .95 from 100 val imgs, tile 1024, no TTA): peak F1 0.8876 (P .897 R .878),
+  pixel IoU .519. x-unet inference is slow (~1.5 s/img on a shared GPU, 38 min for the test set): budget evals early.
