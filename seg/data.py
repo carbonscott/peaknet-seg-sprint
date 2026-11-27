@@ -77,6 +77,7 @@ class PeakDataset(Dataset):
         self.peak_label = peak_label
         self.rng = random.Random(seed)
         self._open = {}
+        self._ids = {}
 
     def __len__(self):
         return len(self.index)
@@ -87,6 +88,16 @@ class PeakDataset(Dataset):
             import zarr  # zarr 2.18; opened lazily so each DataLoader worker has its own handles
             g = self._open[si] = zarr.open(self.paths[si], "r")
         return g
+
+    def _ident(self, si, g):
+        ids = self._ids.get(si)
+        if ids is None:  # the metadata chunk holds all 40 dicts: decode once per store
+            try:
+                ids = [m.get("identifier", "") for m in g["metadata"][:]]
+            except Exception:
+                ids = [""] * g["images"].shape[0]
+            self._ids[si] = ids
+        return ids
 
     def __getstate__(self):
         d = dict(self.__dict__)
@@ -121,10 +132,7 @@ class PeakDataset(Dataset):
                 pi[:img.shape[0], :img.shape[1]] = img
                 pl[:lab.shape[0], :lab.shape[1]] = lab
                 img, lab = pi, pl
-        try:
-            ident = g["metadata"][i].get("identifier", "")
-        except Exception:
-            ident = ""
+        ident = self._ident(si, g)[i]
         meta = dict(store=self.stores[si], index=i, identifier=ident, H=H, W=W, y0=y0, x0=x0)
         return dict(image=torch.from_numpy(np.ascontiguousarray(img))[None],
                     label=torch.from_numpy(np.ascontiguousarray(lab)), meta=meta)
