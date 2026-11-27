@@ -76,3 +76,22 @@ One short dated entry per finding (PST).
   is smaller than the padded label box (IoU < 0.5). A lower-LR + EMA retry was stopped to free the GPU (not run).
 - 04:22 Independent re-scoring of best_model final1's saved test probability maps (zarr labels + seg.viz matcher,
   no seg/evaluate.py code) reproduces h7's whole-test numbers exactly: peak F1 0.918242, TP/FP/FN 34991/3982/2249.
+
+## best_model + shared trainer (h7, crew D-integrate), 2026-11-27 PST
+
+- 01:50 `seg/train.py` defaults to watch: `loss.type: focal_dice` with `w_main: 1` and focal alpha .25 can collapse to
+  all-background on ~1e-5 positive pixels (h6 hit this). `w_main: 10` + dice works (smp_unet config).
+- 01:45 smp Unet-ResNet34 (ImageNet, full-res decoder, pointwise `norm_log`): val peak F1 0.90 after 1000 steps (4 min).
+  Full-resolution decoders are what matters for 1-2 px peaks.
+- 02:05 False positives are confident (median max prob 0.99998) 1-2 px spots, none within 6 px of a labeled peak; on
+  test overlays they look like real, unlabeled peaks. Precision is capped near 0.9 by the labels. Min-size / closing
+  post-processing did not help (`seg/postproc.py`); raising the threshold did. Dead end: post-processing.
+- 02:30 Flip TTA: +0.002 val F1. Saturated-pixel masking: no effect for smp models (`norm_log` already zeroes >= 60000);
+  it did fix precision for lucid_segformer (h5). Ensembling r34 + UNet++ snapshots: +0.000 on val (shared errors).
+- 03:30 Val peak F1 swings +-0.03 between checkpoints at high LR, so the val-picked checkpoint matters more than the
+  architecture. UNet++-r34 best (step 5000) val .929; r34 best .917; h1's Unet-effb4 best .924.
+- 04:21 best_model final1: `seg.evaluate_ensemble --subsets` (4 ckpts predicted once per val image with flip TTA, 9 subsets
+  x 21 thresholds on 300 val images, one process) chose r34 last + UNet++ best at thr .70; whole test peak F1 0.9182
+  (P .898 R .940). History: 0.9061 (r34 snapshot) -> 0.9141 (UNet++ alone) -> 0.9182.
+- Eval cost on the shared L40S: ~0.2 s/img single model, ~0.8 s/img for 2 members x 4 flips; val selection with many
+  subsets is CPU-bound (scoring), ~4-5 s/img with 4 procs.
