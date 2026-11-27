@@ -68,6 +68,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--reverse", action="store_true", help="walk the split backwards (second worker)")
     ap.add_argument("--skip-existing", action="store_true")
+    ap.add_argument("--f32", action="store_true", help="save float32 maps (needed for thresholds very close to 1)")
     ap.add_argument("--meet", help="stop when this other worker's output dir already has the image")
     a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
@@ -102,7 +103,7 @@ def main():
                     k = 2 * a.mask_saturated + 1
                     sat = F.max_pool2d((x >= 65535).float(), k, stride=1, padding=a.mask_saturated) > 0
                     p = p.masked_fill(sat, 0.0)
-            np.save(out + ".tmp.npy", p[0, 0].cpu().numpy().astype(np.float16))
+            np.save(out + ".tmp.npy", p[0, 0].cpu().numpy().astype(np.float32 if a.f32 else np.float16))
             os.replace(out + ".tmp.npy", out)
             n += 1
             if n % 100 == 0:
