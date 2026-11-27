@@ -42,12 +42,12 @@
   {
    "file": "results/proof_report/curves_peaknet_baseline.png",
    "section": "peaknet_baseline",
-   "caption": "<b>peaknet_baseline</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_b/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+   "caption": "<b>peaknet_baseline</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_d/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
   },
   {
    "file": "results/proof_report/evallog_peaknet_baseline.png",
    "section": "peaknet_baseline",
-   "caption": "<b>peaknet_baseline</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+   "caption": "<b>peaknet_baseline</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_d/eval.log</code>: the whole-test metrics JSON printed by the eval command."
   },
   {
    "file": "results/proof_report/ckpt_peaknet_baseline.png",
@@ -72,12 +72,12 @@
   {
    "file": "results/proof_report/curves_hf_upernet.png",
    "section": "hf_upernet",
-   "caption": "<b>hf_upernet</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h4/upn_a/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+   "caption": "<b>hf_upernet</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h4/upn_ft/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
   },
   {
    "file": "results/proof_report/evallog_hf_upernet.png",
    "section": "hf_upernet",
-   "caption": "<b>hf_upernet</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/eval_test.log</code>: the whole-test metrics JSON printed by the eval command."
+   "caption": "<b>hf_upernet</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_ft/eval_test.log</code>: the whole-test metrics JSON printed by the eval command."
   },
   {
    "file": "results/proof_report/ckpt_hf_upernet.png",
