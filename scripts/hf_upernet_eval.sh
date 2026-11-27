@@ -13,7 +13,7 @@ cp -f $R/best.pt $D/checkpoints/h4/$EXP/best.pt
 cp -f $R/train.log $R/metrics.jsonl $D/logs/h4/$EXP/ 2>/dev/null
 cd $PK/work/h4
 # optional: VAL_SWEEP=1 -> pick threshold on the first ${VAL_N:-500} VAL images over a wide sweep, then test at that thr
-VCMD="python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt $D/checkpoints/h4/$EXP/best.pt --split val --limit ${VAL_N:-500} --thr 0.5,0.7,0.8,0.85,0.9,0.93,0.95,0.97,0.98,0.99 --out $D/evals/h4/$EXP/metrics_valsweep_$TAG.json --workers 6"
+VCMD="python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt $D/checkpoints/h4/$EXP/best.pt --split val --limit ${VAL_N:-500} --thr 0.5,0.7,0.8,0.9,0.93,0.95,0.97,0.98,0.99,0.995,0.998,0.999 --out $D/evals/h4/$EXP/metrics_valsweep_$TAG.json --workers 6"
 CMD="python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt $D/checkpoints/h4/$EXP/best.pt --split test --out $D/evals/h4/$EXP/metrics_$TAG.json --save-overlays $D/figures/h4/$EXP/$TAG --n-overlays 6 --workers 6 $*"
 echo "$CMD" > $D/evals/h4/$EXP/eval_cmd_$TAG.txt
 setsid nohup srun --jobid=$J --overlap --ntasks=1 --cpus-per-task=7 --mem=40G --gres=gpu:l40s:10 \
