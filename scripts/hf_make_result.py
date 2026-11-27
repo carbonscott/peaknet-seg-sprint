@@ -31,7 +31,7 @@ def main():
     for u in a.upstream.split(","):
         url, ref = u.split("=", 1)
         ups.append({"url": url, "ref": ref})
-    argv = m.get("argv") or []
+    argv = [x for x in (m.get("argv") or []) if not x.endswith("evaluate.py")]
     ev_cmd = "python -m seg.evaluate " + " ".join(argv) if argv else "python -m seg.evaluate"
     base = "%s/%%s/%s/%s" % (D, a.agent, a.exp)
     r = {

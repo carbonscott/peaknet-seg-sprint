@@ -1,0 +1,66 @@
+{
+ "statement": "hf_segformer",
+ "model": "Hugging Face SegformerForSemanticSegmentation, nvidia/mit-b2 ImageNet encoder, stock all-MLP decoder (1 logit at 1/4 res, bilinear upsample), 1-ch robust median/MAD+asinh norm, 1x1 conv 1->3 ch adapter, focal+dice; flip-TTA, thr 0.999 picked on val",
+ "upstream": [
+  {
+   "url": "https://huggingface.co/nvidia/mit-b2",
+   "ref": "nvidia/mit-b2 weights from the HF Hub via transformers 4.57.6 SegformerForSemanticSegmentation"
+  },
+  {
+   "url": "https://github.com/huggingface/transformers",
+   "ref": "v4.57.6"
+  }
+ ],
+ "code": [
+  "seg/models/hf_segformer.py",
+  "configs/hf_segformer.yaml",
+  "seg/train.py",
+  "seg/evaluate.py",
+  "seg/infer.py",
+  "scripts/val_grid.py",
+  "scripts/hf_eval_pipeline.sh",
+  "scripts/hf_chain_eval.sh"
+ ],
+ "train": {
+  "slurm_jobid": "47394816.49",
+  "gpus": 1,
+  "wallclock_min": 92.2,
+  "train_images": 15989,
+  "config": "configs/hf_segformer.yaml",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h3/seg_b2_a/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h3/seg_b2_a/metrics.jsonl"
+ },
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h3/seg_b2_a/best.pt",
+ "eval": {
+  "split": "test",
+  "n_images": 1529,
+  "peak_tol_px": 3.0,
+  "threshold": 0.999,
+  "threshold_from": "scripts/val_grid.py on 400 evenly spaced VAL images: {best.pt, last.pt} x flip-TTA {off,on} x saturated mask {0,1,2} x thr .5-.999; best = best.pt + TTA, no mask, thr 0.999 (val peak F1 0.8668); log evals/h3/seg_b2_a/val_grid_test.json",
+  "tta": true,
+  "pixel": {
+   "iou": 0.27138010052287087,
+   "f1": 0.42690632079464264,
+   "precision": 0.48855840455840455,
+   "recall": 0.37907069278040584
+  },
+  "peak": {
+   "f1": 0.8222861328919878,
+   "precision": 0.8309206558096178,
+   "recall": 0.8138292158968851
+  },
+  "eval_cmd": "python -m seg.evaluate --model hf_segformer --config configs/hf_segformer.yaml --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h3/seg_b2_a/best.pt --split test --split-json results/split/result.json --workers 6 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/metrics_test.json --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h3/seg_b2_a/test --n-overlays 6 --thr 0.999 --tta",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/eval_test.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/metrics_test.json"
+ },
+ "proof": [
+  "results/hf_segformer/overlay_test_r0309_0007_11.png",
+  "results/hf_segformer/overlay_test_r0309_0000_0.png"
+ ],
+ "notes": "Run seg_b2_a: seg.train (shared trainer), mit-b2, crop 512, 16 crops/step (4 per image), pos_frac 0.7, AdamW lr 3e-4 (encoder x0.25), cosine, focal(alpha .25,gamma 2)+dice, bf16, rot90 + gain jitter, 92 min on one L40S (shared with a second run part of the time), 10001 steps. Test = whole split (1529 imgs) at native resolution, flip-TTA (4 flips, mean prob), thr 0.999. Val (400 imgs) F1 .867 vs test .822: recall drops on the mfxl1027522_r0028 part of test. Tried: PixelShuffle(4) full-res head (worse, val .66 @1500 steps, stopped); mit-b3 + focal(alpha .75)x10+dice (val .854 peak at step 3000, stopped at ~04:00 to free the GPU for this eval); saturated-pixel masking (no gain: the robust norm already tames 65535 pixels). False positives are isolated faint spots far from true peaks (scripts/fp_diag.py), not fragments.",
+ "selection": {
+  "checkpoint": "seg.train best.pt (step 4000 of 10001; val sweep in-run was capped at thr 0.9) chosen over last.pt (val grid F1 0.812) by val grid",
+  "val_grid_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/val_grid_test.json",
+  "val_peak_f1": 0.8668
+ }
+}
