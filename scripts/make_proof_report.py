@@ -212,7 +212,7 @@ def main():
         if d.get("notes"):
             H.append("<p><small>%s</small></p>" % esc(d["notes"]))
         H.append('<div class="plots">')
-        for p in d.get("proof", [])[:2]:
+        for p in d.get("proof", [])[:1]:
             H.append(fig(imgs, p, "<b>%s</b> test prediction overlay (%s)" % (m, esc(os.path.basename(p)))))
         for f in ev.get("figures", []):
             if f.get("section") == m:

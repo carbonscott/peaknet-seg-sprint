@@ -66,6 +66,9 @@ def main():
     ap.add_argument("--split", default="test")
     ap.add_argument("--split-json", default="results/split/result.json")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--reverse", action="store_true", help="walk the split backwards (second worker)")
+    ap.add_argument("--skip-existing", action="store_true")
+    ap.add_argument("--meet", help="stop when this other worker's output dir already has the image")
     a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("host=%s SLURM_JOB_ID=%s SLURM_STEP_ID=%s device=%s members=%s tta=%s mask_saturated=%d" % (
@@ -75,10 +78,17 @@ def main():
     os.makedirs(a.out_probs, exist_ok=True)
     flips = [(), (-1,), (-2,), (-2, -1)] if a.tta else [()]
     n, t0 = 0, time.time()
+    items = []
     for s in sp["stores"][a.split]:
-        z = zarr.open(os.path.join(DATA, s), "r")
-        for i in range(z["images"].shape[0]):
+        items += [(s, i) for i in range(zarr.open(os.path.join(DATA, s), "r")["images"].shape[0])]
+    if a.reverse:
+        items = items[::-1]
+    for s, i in items:
+            z = zarr.open(os.path.join(DATA, s), "r")
             out = os.path.join(a.out_probs, "%s__%d.npy" % (s, i))
+            if (a.skip_existing and os.path.exists(out)) or (a.meet and os.path.exists(os.path.join(a.meet, os.path.basename(out)))):
+                print("met existing output at %s__%d after %d images; stopping" % (s, i, n), flush=True)
+                break
             img = np.asarray(z["images"][i], np.float32)
             x = torch.from_numpy(img)[None, None].to(dev)
             with torch.no_grad():
@@ -92,14 +102,13 @@ def main():
                     k = 2 * a.mask_saturated + 1
                     sat = F.max_pool2d((x >= 65535).float(), k, stride=1, padding=a.mask_saturated) > 0
                     p = p.masked_fill(sat, 0.0)
-            np.save(out, p[0, 0].cpu().numpy().astype(np.float16))
+            np.save(out + ".tmp.npy", p[0, 0].cpu().numpy().astype(np.float16))
+            os.replace(out + ".tmp.npy", out)
             n += 1
             if n % 100 == 0:
                 print("  %d images, %.2f img/s" % (n, n / (time.time() - t0)), flush=True)
             if a.limit and n >= a.limit:
                 break
-        if a.limit and n >= a.limit:
-            break
     print("done %d images in %.1f min" % (n, (time.time() - t0) / 60), flush=True)
 
 
