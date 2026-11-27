@@ -14,12 +14,31 @@ model:
   uses_learned_upsample: false
   norm: log1p_std        # or "instance" (upstream InstanceNorm on raw ADU)
   clip_max: 65000.0
+  sat_zero: 60000.0      # saturated pixels -> 0 (h5 note 74: 65535 runs cause false peaks)
   pad_multiple: 32
-# upstream optimiser settings (base.yaml): AdamW lr 1.5e-4, wd 0.05, betas (0.9, 0.95), grad clip 1.0,
-# focal loss alpha [0.25, 0.75] gamma 2
+# seg/train.py keys. Upstream PeakNet (base.yaml): AdamW lr 1.5e-4, wd 0.05, clip 1.0, focal alpha [0.25,0.75] gamma 2.
+# Here: lr 3e-4 for a short from-scratch run; focal (alpha 0.75 on peaks) x10 + dice.
 train:
-  lr: 1.5e-4
-  weight_decay: 0.05
-  betas: [0.9, 0.95]
-  grad_clip: 1.0
   crop: 512
+  batch_size: 16
+  crops_per_image: 4
+  pos_frac: 0.8
+  lr: 3.0e-4
+  weight_decay: 0.05
+  warmup: 300
+  grad_clip: 1.0
+  amp: true
+  num_workers: 8
+  val_every: 1000
+  val_images: 200
+  thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998]
+loss:
+  type: focal_dice
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0
+# seg.evaluate: with no --thr/--val-thr, sweep these on val (every 2nd image) and report test at the best
+eval:
+  val_thr: [0.5, 0.7, 0.8, 0.9, 0.93, 0.95, 0.97, 0.98, 0.99, 0.995]
+  val_every: 2

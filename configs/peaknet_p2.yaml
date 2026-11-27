@@ -1,0 +1,36 @@
+# peaknet_baseline variant (h1): same upstream PeakNet, stem stride 2 (patch_size 2) so features and the
+# predicted logit map are at 1/2 resolution instead of 1/4 (peaks are 1-2 px), plus upstream's learned
+# ConvTranspose upsample residual (uses_learned_upsample). Loss as h2's pk_a run for comparability.
+model:
+  name: peaknet_baseline
+  patch_size: 2
+  hidden_sizes: [96, 192, 384, 768]
+  depths: [3, 3, 9, 3]
+  drop_path_rate: 0.0
+  bifpn_features: 256
+  bifpn_blocks: 1
+  bifpn_base_level: 4
+  head_channels: 256
+  head_groups: 32
+  uses_learned_upsample: true
+  norm: log1p_std
+  clip_max: 65000.0
+  pad_multiple: 32
+train:
+  lr: 2.0e-4
+  weight_decay: 0.05
+  betas: [0.9, 0.95]
+  grad_clip: 1.0
+  crop: 512
+  batch_size: 8        # 16 OOMs on a 44 GB L40S at stride 2
+  crops_per_image: 4
+  pos_frac: 0.8
+  num_workers: 8
+  val_every: 1000
+  val_images: 200
+loss:
+  type: focal_dice
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0

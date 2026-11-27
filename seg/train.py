@@ -14,7 +14,7 @@ Config (yaml): the whole dict is passed to seg.models.<model>.build_model(cfg). 
     train: {crop: 512, batch_size: 16, crops_per_image: 4, pos_frac: 0.7, lr: 3e-4, weight_decay: 0.01,
             max_steps: 20000, warmup: 300, val_every: 1000, val_images: 200, num_workers: 8,
             amp: true, grad_clip: 1.0, gain_jitter: 0.2, rot90: true, val_tile: null,
-            thresholds: [0.2, ..., 0.9], seed: 0}
+            thresholds: [0.1, ..., 0.98], seed: 0}
     loss:  see seg/losses.py
 Outputs in --out: train.log lines on stdout, metrics.jsonl, best.pt {state_dict, cfg, thr, step, val, model},
 last.pt. best = highest val peak F1 (tol 3 px) over the threshold sweep; thr saved with it.
@@ -39,7 +39,7 @@ from seg.infer import predict_prob
 from seg.losses import build_loss
 
 DATA_ROOT = "/sdf/data/lcls/ds/prj/prjcwang31/results/proj-peaknet10k/peaknet10k"
-DEFAULT_THR = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+DEFAULT_THR = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98]
 
 
 # ----------------------------------------------------------------------------- config
@@ -160,7 +160,7 @@ def crop_collate(batch):
 
 # ----------------------------------------------------------------------------- metrics
 @torch.no_grad()
-def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1):
+def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1, mask_saturated=None):
     """Team metric (seg.evaluate.Accumulator) over val images idxs at full resolution.
     Returns counts array (len(thrs), 6): pixel tp,fp,fn ; peak tp,fp,fn."""
     from seg.evaluate import Accumulator
@@ -169,7 +169,7 @@ def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1):
     for i in idxs:
         it = val_ds[i]
         img = torch.from_numpy(_hw(it["image"]).astype(np.float32))[None, None].to(device)
-        prob = predict_prob(model, img, tile=tile)[0, 0].float().cpu().numpy()
+        prob = predict_prob(model, img, tile=tile, mask_saturated=mask_saturated)[0, 0].float().cpu().numpy()
         acc.add_prob(prob, _hw(it["label"]) == peak_label)
     model.train()
     return np.stack([acc.c[float(t)] for t in thrs]).astype(np.float64)
@@ -337,7 +337,8 @@ def main(argv=None):
             last = bool(flag.item())
         if step % val_every == 0 or last:
             tv = time.time()
-            c = validate(model, va_base, my_v, thrs, device, tile=val_tile, peak_label=int(g("peak_label", 1)))
+            c = validate(model, va_base, my_v, thrs, device, tile=val_tile, peak_label=int(g("peak_label", 1)),
+                         mask_saturated=cfg.get("infer", {}).get("mask_saturated"))
             if ddp:
                 ct = torch.from_numpy(c).to(device)
                 dist.all_reduce(ct)

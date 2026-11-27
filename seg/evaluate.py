@@ -268,10 +268,10 @@ def _predict_fn(args):
     return f, info
 
 
-def _iter_split(args):
+def _iter_split(args, split=None, every=1):
     from seg import data as D
     sp = D.load_split(args.split_json)
-    stores = sp[args.split]
+    stores = sp[split or args.split]
     if args.limit_stores:
         stores = stores[: args.limit_stores]
     kw = {}
@@ -279,13 +279,14 @@ def _iter_split(args):
         kw["root"] = args.data_root
     ds = D.PeakDataset(stores, **kw)
     n = len(ds) if not args.limit else min(len(ds), args.limit)
+    idx = list(range(0, n, max(1, int(every))))
     if args.workers > 0:
         import torch
         from torch.utils.data import DataLoader, Subset
-        it_src = DataLoader(Subset(ds, range(n)), batch_size=None, shuffle=False, num_workers=args.workers,
+        it_src = DataLoader(Subset(ds, idx), batch_size=None, shuffle=False, num_workers=args.workers,
                             prefetch_factor=4, persistent_workers=False)
     else:
-        it_src = (ds[i] for i in range(n))
+        it_src = (ds[i] for i in idx)
     for i, it in enumerate(it_src):
         if hasattr(it.get("image"), "numpy"):
             it = dict(it, image=it["image"].numpy(), label=it["label"].numpy())
@@ -314,6 +315,10 @@ def main(argv=None):
     ap.add_argument("--split-json", default="results/split/result.json")
     ap.add_argument("--data-root", default=None)
     ap.add_argument("--thr", default=None, help="threshold(s), comma separated; default: ckpt thr or 0.5")
+    ap.add_argument("--val-thr", default=None,
+                    help="comma list: sweep these on the VAL split first, pick the best peak F1, then evaluate "
+                         "--split at that single threshold (one process, one model load)")
+    ap.add_argument("--val-every", type=int, default=1, help="with --val-thr: use every k-th val image")
     ap.add_argument("--tol", type=float, default=PEAK_TOL_PX)
     ap.add_argument("--peak-label", type=int, default=None, help="default: split's peak_label")
     ap.add_argument("--tile", type=int, default=None)
@@ -339,7 +344,7 @@ def main(argv=None):
 
     if args.preds:
         import os
-        info = {"ckpt_thr": None}
+        info = {"ckpt_thr": None, "cfg": _load_yaml(args.config)}
 
         def predict(img, meta):
             return np.load(os.path.join(args.preds, "%s__%d.npy" % (meta["store"], int(meta["index"])))).astype(np.float32)
@@ -352,6 +357,26 @@ def main(argv=None):
             return f(img)
 
     thrs = _parse_thr(args.thr)
+    val_info = None
+    ecfg = (info.get("cfg") or {}).get("eval") or {}
+    if not args.val_thr and not args.thr and ecfg.get("val_thr"):  # config default: eval: {val_thr: [...]}
+        v = ecfg["val_thr"]
+        args.val_thr = ",".join(str(x) for x in v) if isinstance(v, (list, tuple)) else str(v)
+        args.val_every = int(ecfg.get("val_every", args.val_every))
+    if args.val_thr:
+        vthrs = _parse_thr(args.val_thr)
+        vacc = Accumulator(vthrs, tol=args.tol)
+        tv = time.time()
+        for i, img, lab, meta in _iter_split(args, "val", args.val_every):
+            vacc.add_prob(predict(img, meta), lab == peak_label)
+            if (i + 1) % 100 == 0:
+                print("[evaluate] val %d images, %.1f s" % (i + 1, time.time() - tv), file=sys.stderr, flush=True)
+        vbest = vacc.best_threshold()
+        val_info = {"n_images": vacc.n, "every": args.val_every, "picked_thr": vbest,
+                    "by_threshold": {str(t): vacc.result(t) for t in vthrs}, "seconds": round(time.time() - tv, 1)}
+        print("[evaluate] val-picked thr %.4g (val peak F1 %.4f)" % (vbest, vacc.result(vbest)["peak"]["f1"]),
+              file=sys.stderr, flush=True)
+        thrs = [vbest]
     if thrs is None:
         thrs = [float(info["ckpt_thr"])] if info.get("ckpt_thr") is not None else [0.5]
     acc = Accumulator(thrs, tol=args.tol)
@@ -380,7 +405,10 @@ def main(argv=None):
     out = {"split": args.split, "n_images": acc.n, "peak_tol_px": args.tol, "peak_label": peak_label,
            "threshold": best, "pixel": res["pixel"], "peak": res["peak"],
            "model": args.model, "ckpt": args.ckpt, "preds": args.preds, "tta": bool(args.tta), "tile": args.tile,
+           "threshold_from": ("val sweep (--val-thr)" if val_info else ("--thr" if args.thr else "checkpoint thr (val) or 0.5")),
            "seconds": round(time.time() - t0, 1), "argv": sys.argv if argv is None else argv}
+    if val_info:
+        out["val"] = val_info
     if len(thrs) > 1:
         out["by_threshold"] = {str(t): acc.result(t) for t in thrs}
         out["warning"] = "threshold picked on THIS split; for test reporting pick the threshold on val"
@@ -392,7 +420,7 @@ def main(argv=None):
             for img, tb, prob, meta in overlays:
                 st, ix = meta.get("store", "img"), int(meta.get("index", 0))
                 viz.save_overlay(img, tb, prob > best, os.path.join(args.save_overlays, "%s__%d.png" % (st, ix)),
-                                 title="%s  %s[%d]  (test)" % (args.model or "preds", st, ix),
+                                 title="%s  %s[%d]  (%s)" % (args.model or "preds", st, ix, args.split),
                                  extra="thr=%.3g  split totals: peak F1 %.4f, pixel IoU %.4f"
                                  % (best, res["peak"]["f1"], res["pixel"]["iou"]), tol=args.tol, cls=True)
         except Exception as e:  # figures must never kill an eval

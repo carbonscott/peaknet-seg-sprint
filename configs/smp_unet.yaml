@@ -1,0 +1,6 @@
+# best_model candidate: smp Unet(resnet34, ImageNet) full-res decoder. Trained with seg/train.py.
+model: {arch: Unet, encoder: resnet34, weights: imagenet, encoder_lr_mult: 1.0}
+train: {crop: 512, batch_size: 16, crops_per_image: 4, pos_frac: 0.8, lr: 5.0e-4, weight_decay: 1.0e-4,
+        max_steps: 30000, warmup: 300, val_every: 1000, val_images: 150, num_workers: 10, amp: true,
+        grad_clip: 1.0, gain_jitter: 0.2, rot90: true}
+loss: {type: focal_dice, focal_alpha: 0.25, focal_gamma: 2.0, w_main: 10.0, w_dice: 1.0}

@@ -10,6 +10,7 @@ seg head 256 ch, bilinear 4x upsample). Glue only:
   - input normalisation: "log1p_std" (clamp, log1p, per-image standardisation; default) or
     "instance" (upstream InstanceNorm: per-image mean/std of the raw image)
   - pad H, W to a multiple of 32 (reflect), crop logits back to (H, W).
+  - optional sat_zero: saturated pixels (>= sat_zero ADU, unlabelled 65535 runs) set to 0 before normalising
   - optional patch_size 2 (stem stride 2 instead of 4): same layers, every feature map at 2x resolution,
     seg-head upsampling factors scaled to match; ~4x compute.
 
@@ -32,6 +33,7 @@ DEFAULTS = {
     "uses_learned_upsample": False,
     "norm": "log1p_std",
     "clip_max": 65000.0,
+    "sat_zero": None,          # e.g. 60000: pixels >= this (saturated 65535 runs along panel edges) -> 0
     "pad_multiple": 32,
 }
 
@@ -82,7 +84,10 @@ class PeakNetBinary(nn.Module):
         if x.dim() == 3:
             x = x[:, None]
         B, _, H, W = x.shape
-        x = normalize(x.float(), self.c["norm"], self.c["clip_max"])
+        x = x.float()
+        if self.c.get("sat_zero"):
+            x = torch.where(x >= float(self.c["sat_zero"]), torch.zeros_like(x), x)
+        x = normalize(x, self.c["norm"], self.c["clip_max"])
         p = int(self.c["pad_multiple"])
         ph, pw = (-H) % p, (-W) % p
         if ph or pw:

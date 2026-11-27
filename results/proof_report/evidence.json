@@ -1,0 +1,54 @@
+{
+ "cluster": "SLAC S3DF, ada partition, NVIDIA L40S, node sdfada013",
+ "jobs": [
+  "47394816 (pkseg-n2)"
+ ],
+ "findings": [
+  "01:20-01:33 PST: every first training attempt died at the first convolution with CUDNN_STATUS_NOT_INITIALIZED. Cause: CUDA-13 wheels in the shared venv had overwritten torch's cu12 cuDNN/NCCL/cuSPARSELt (not GPU hardware). Fixed by reinstalling the cu12 pins (h1, log runs/h1/envfix/uv.log); runs relaunched 01:34-01:38. The FAILED/CANCELLED steps in the sacct capture are these attempts.",
+  "Labelled peaks are tiny (median 1-2 px, 4-35 peaks per 1920x1920 image; positive pixel fraction about 1e-6 to 1e-5). Models therefore use full-resolution heads (PixelShuffle or full-res decoders) and peak-centred training crops."
+ ],
+ "not_covered": [
+  "This version of the page was built while the first training runs were still in progress; per-model test results, overlays and the independent re-evaluation are added as each model statement lands on main."
+ ],
+ "commands": [
+  "# evidence figures (S3DF, repo root, shared venv)\npython scripts/proof_collect.py --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof --jobs 47394816 --live NAME=metrics.jsonl ... --logs NAME=train.log ...",
+  "# independent re-evaluation of saved test probability maps (S3DF)\npython scripts/independent_reeval.py --probs <dir of store__idx.npy> --thr <val-picked thr> --split test --out reeval.json",
+  "# page (local repo root)\npython3 scripts/proof_fetch.py peaknet-06 /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof && python3 scripts/make_proof_report.py --commit $(git rev-parse --short HEAD)"
+ ],
+ "audit": [
+  "All PNGs are rendered on S3DF (sdfiana025 login node reading the shared filesystem; Slurm job steps on sdfada013 for model inference) and copied byte-for-byte with ops/fetch_bin.sh. Durable copies: /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof/.",
+  "Live training-curve and log-tail figures are snapshots of runs in progress at the capture time printed on each figure; they are superseded by the final per-model curves."
+ ],
+ "figures": [
+  {
+   "file": "results/proof_report/squeue.png",
+   "section": "cluster",
+   "caption": "<b>squeue</b> on S3DF: the sprint's ada allocations and the job steps running when the report was built."
+  },
+  {
+   "file": "results/proof_report/sacct.png",
+   "section": "cluster",
+   "caption": "<b>sacct</b> for allocation(s) 47394816: every training and evaluation step with its start, elapsed time and resources."
+  },
+  {
+   "file": "results/proof_report/split.png",
+   "section": "cluster",
+   "caption": "<b>Dataset and split</b>: images per set and experiment (run-level split, no run in two sets) and three random test images with their labelled peaks, read from the Zarr stores on S3DF."
+  },
+  {
+   "file": "results/proof_report/curves_live.png",
+   "section": "curves",
+   "caption": "<b>Training in progress</b> (snapshot when the page was built): validation peak F1 and loss from the live <code>metrics.jsonl</code> of each crew's run."
+  },
+  {
+   "file": "results/proof_report/trainlog_hf_upernet_upn_a.png",
+   "section": "logs",
+   "caption": "<b>hf_upernet/upn_a</b> live training log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/scratch/main/peaknet-seg/runs/h4/upn_a/train.log</code>."
+  },
+  {
+   "file": "results/proof_report/trainlog_lucid_segformer_lseg_a.png",
+   "section": "logs",
+   "caption": "<b>lucid_segformer/lseg_a</b> live training log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/scratch/main/peaknet-seg/runs/h5/lseg_a/train.log</code>."
+  }
+ ]
+}

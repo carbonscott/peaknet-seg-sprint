@@ -103,6 +103,62 @@ def cmd_leaderboard(a):
     print(a.out)
 
 
+def cmd_split(a):
+    """Split composition (images per set per experiment) + labelled test samples with GT peaks circled."""
+    import numpy as np
+    import zarr
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from seg.viz import _display, centroids
+    sp = json.load(open(a.split))
+    root = a.root
+    cnt, peaks = {}, {}
+    for k in ("train", "val", "test"):
+        for s in sp["stores"][k]:
+            exp = s.split("_")[0]
+            n = zarr.open(os.path.join(root, s), "r")["images"].shape[0]
+            cnt[(k, exp)] = cnt.get((k, exp), 0) + n
+    exps = sorted({e for _, e in cnt})
+    fig = plt.figure(figsize=(17, 9), dpi=90)
+    gs = fig.add_gridspec(2, 4, width_ratios=[1.3, 1, 1, 1], hspace=0.25, wspace=0.08)
+    ax = fig.add_subplot(gs[:, 0])
+    bottom = np.zeros(3)
+    for e in exps:
+        v = np.array([cnt.get((k, e), 0) for k in ("train", "val", "test")])
+        ax.bar(["train", "val", "test"], v, bottom=bottom, label=e)
+        bottom += v
+    for i, b in enumerate(bottom):
+        ax.text(i, b, "%d" % b, ha="center", va="bottom", fontsize=10)
+    ax.set_ylabel("images"); ax.legend(fontsize=8, title="experiment"); ax.set_title("run-level split: images per set", weight="bold")
+    rng = np.random.default_rng(0)
+    test = sp["stores"]["test"]
+    picks = [test[j] for j in rng.choice(len(test), 3, replace=False)]
+    for c, s in enumerate(picks):
+        z = zarr.open(os.path.join(root, s), "r")
+        i = int(rng.integers(z["images"].shape[0]))
+        img, lab = np.asarray(z["images"][i], np.float32), np.asarray(z["labels"][i])
+        g = lab == sp.get("peak_label", 1)
+        gc = centroids(g)
+        ax1 = fig.add_subplot(gs[0, 1 + c])
+        ax1.imshow(_display(img), cmap="gray")
+        for y, x in gc:
+            ax1.add_patch(plt.Circle((x, y), img.shape[0] / 90, fill=False, ec="cyan", lw=1))
+        ax1.set_title("%s[%d]\n%dx%d, %d labelled peaks, %d peak px" % (s.replace("_peaknet", "").replace(".zarr", ""), i, img.shape[0], img.shape[1], len(gc), int(g.sum())), fontsize=8)
+        ax1.set_xticks([]); ax1.set_yticks([])
+        ax2 = fig.add_subplot(gs[1, 1 + c])
+        if len(gc):
+            y, x = gc[0].astype(int)
+            h = 32
+            y0, x0 = max(0, y - h), max(0, x - h)
+            ax2.imshow(_display(img[y0:y0 + 2 * h, x0:x0 + 2 * h], (1, 99.9)), cmap="gray", interpolation="nearest")
+            ax2.contour(g[y0:y0 + 2 * h, x0:x0 + 2 * h].astype(float), levels=[0.5], colors="cyan", linewidths=1)
+            ax2.set_title("zoom: labelled peak mask (cyan) at y=%d x=%d" % (y, x), fontsize=8)
+        ax2.set_xticks([]); ax2.set_yticks([])
+    fig.suptitle("Dataset and split (whole test set = %d images); test samples with ground-truth peaks" % sp["n_images"]["test"], weight="bold")
+    fig.text(0.99, 0.005, "made on %s from %s and %s" % (stamp(), a.split, root), ha="right", fontsize=7, color="#555")
+    fig.savefig(a.out)
+    print(a.out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -122,8 +178,12 @@ def main():
     lb = sub.add_parser("leaderboard")
     lb.add_argument("--lb", required=True)
     lb.add_argument("--out", required=True)
+    sp = sub.add_parser("split")
+    sp.add_argument("--split", default="results/split/result.json")
+    sp.add_argument("--root", default="/sdf/data/lcls/ds/prj/prjcwang31/results/proj-peaknet10k/peaknet10k")
+    sp.add_argument("--out", required=True)
     a = ap.parse_args()
-    {"text": cmd_text, "curves": cmd_curves, "leaderboard": cmd_leaderboard}[a.cmd](a)
+    {"text": cmd_text, "curves": cmd_curves, "leaderboard": cmd_leaderboard, "split": cmd_split}[a.cmd](a)
 
 
 if __name__ == "__main__":
