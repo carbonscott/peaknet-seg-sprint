@@ -36,3 +36,7 @@ loss:
   focal_gamma: 2.0
   w_main: 10.0
   w_dice: 1.0
+# seg.evaluate: with no --thr/--val-thr, sweep these on val (every 2nd image) and report test at the best
+eval:
+  val_thr: [0.5, 0.7, 0.8, 0.9, 0.93, 0.95, 0.97, 0.98, 0.99, 0.995]
+  val_every: 2
