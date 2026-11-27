@@ -1,0 +1,24 @@
+# peaknet_baseline: carbonscott/peaknet PeakNet (ConvNeXtV2 + BiFPN + seg head), 1 binary logit.
+# Architecture = peaknet/train/hydra_config/train_config/base.yaml defaults (from scratch, as upstream).
+model:
+  name: peaknet_baseline
+  hidden_sizes: [96, 192, 384, 768]
+  depths: [3, 3, 9, 3]
+  drop_path_rate: 0.0
+  bifpn_features: 256
+  bifpn_blocks: 1
+  bifpn_base_level: 4
+  head_channels: 256
+  head_groups: 32
+  uses_learned_upsample: false
+  norm: log1p_std        # or "instance" (upstream InstanceNorm on raw ADU)
+  clip_max: 65000.0
+  pad_multiple: 32
+# upstream optimiser settings (base.yaml): AdamW lr 1.5e-4, wd 0.05, betas (0.9, 0.95), grad clip 1.0,
+# focal loss alpha [0.25, 0.75] gamma 2
+train:
+  lr: 1.5e-4
+  weight_decay: 0.05
+  betas: [0.9, 0.95]
+  grad_clip: 1.0
+  crop: 512
