@@ -41,4 +41,4 @@ loss:
 # seg.evaluate: with no --thr/--val-thr, sweep these on val (every 2nd image) and report test at the best
 eval:
   val_thr: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995]
-  val_every: 2
+  val_every: 3
