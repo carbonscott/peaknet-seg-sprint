@@ -1,0 +1,19 @@
+{
+ "statement": "proof_report",
+ "page": "results/proof_report/index.html",
+ "made_with": "/proof-report skill conventions; scripts/make_proof_report.py",
+ "covers": [
+  "peaknet_baseline",
+  "hf_segformer",
+  "hf_upernet",
+  "lucid_segformer",
+  "lucid_unet",
+  "best_model"
+ ],
+ "models_with_results": [],
+ "n_img": 6,
+ "evidence": "results/proof_report/evidence.json",
+ "built": "2026-11-27 09:39 UTC",
+ "main_commit": "b3e3ce4",
+ "notes": "All screenshots are S3DF artefacts (seg/viz.py overlays, scripts/proof_figs.py renders of squeue/logs/curves, independent re-evaluation)."
+}
