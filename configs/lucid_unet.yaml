@@ -34,6 +34,7 @@ train:
   rot90: true
   val_tile: 1024
   seed: 0
+  thresholds: [0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998]
 loss:
   type: focal_dice
   focal_alpha: 0.25
