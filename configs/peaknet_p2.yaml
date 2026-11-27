@@ -17,12 +17,12 @@ model:
   clip_max: 65000.0
   pad_multiple: 32
 train:
-  lr: 3.0e-4
+  lr: 2.0e-4
   weight_decay: 0.05
   betas: [0.9, 0.95]
   grad_clip: 1.0
   crop: 512
-  batch_size: 16
+  batch_size: 8        # 16 OOMs on a 44 GB L40S at stride 2
   crops_per_image: 4
   pos_frac: 0.8
   num_workers: 8

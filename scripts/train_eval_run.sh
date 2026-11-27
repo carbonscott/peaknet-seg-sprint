@@ -16,6 +16,7 @@ export HF_HOME=$PK/hf_home HF_HUB_OFFLINE=1
 echo "[run] $(date) host $(hostname) cvd=$CUDA_VISIBLE_DEVICES step=${SLURM_JOB_ID:-}.${SLURM_STEP_ID:-} model=$MODEL cfg=$CFG"
 python -u -m seg.train --model "$MODEL" --config "$CFG" --out "$R" --time-min "$TMIN" "$@"
 echo "[run] train exit $? at $(date)"
+[ -f "$R/best.pt" ] || { echo "[run] no best.pt: abort"; exit 1; }
 cp "$R/best.pt" "$DUR/checkpoints/$ME/$EXP/best.pt"
 cp "$R/metrics.jsonl" "$DUR/logs/$ME/$EXP/metrics.jsonl"
 cp "$R/train.log" "$DUR/logs/$ME/$EXP/train.log" 2>/dev/null
