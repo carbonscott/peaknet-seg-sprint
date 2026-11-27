@@ -19,14 +19,14 @@ model:
 train:
   crop: 512
   batch_size: 6
-  crops_per_image: 4
+  crops_per_image: 2
   pos_frac: 0.8
   lr: 6.0e-4
   weight_decay: 0.01
   max_steps: 20000
   warmup: 300
-  val_every: 1000
-  val_images: 200
+  val_every: 1500
+  val_images: 100
   num_workers: 4
   amp: true
   grad_clip: 1.0
@@ -34,8 +34,10 @@ train:
   rot90: true
   val_tile: 1024
   seed: 0
-  thresholds: [0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998]
+  thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995]
 loss:
   type: focal_dice
   focal_alpha: 0.25
   focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0
