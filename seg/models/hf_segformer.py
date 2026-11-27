@@ -27,7 +27,7 @@ def robust_norm(x, clip=(-10.0, 1e4)):
 
 
 class HFSegformerPeak(nn.Module):
-    def __init__(self, pretrained="nvidia/mit-b2", first_stride=4, pad_to=32, drop_path=None):
+    def __init__(self, pretrained="nvidia/mit-b2", first_stride=4, pad_to=32, drop_path=None, enc_lr_mult=0.25):
         super().__init__()
         from transformers import SegformerConfig, SegformerForSemanticSegmentation
         kw = dict(num_labels=1, ignore_mismatched_sizes=True)
@@ -44,6 +44,14 @@ class HFSegformerPeak(nn.Module):
             self.adapter.weight.fill_(1.0)
             self.adapter.bias.zero_()
         self.pad_to = pad_to
+        self.enc_lr_mult = enc_lr_mult
+
+    def param_groups(self, lr):
+        """seg.train hook: pretrained encoder at lr*enc_lr_mult, decoder + adapter at lr."""
+        enc = [p for p in self.net.segformer.parameters() if p.requires_grad]
+        ids = {id(p) for p in enc}
+        rest = [p for p in self.parameters() if p.requires_grad and id(p) not in ids]
+        return [{"params": enc, "lr": lr * self.enc_lr_mult}, {"params": rest, "lr": lr}]
 
     def forward(self, x):
         if x.dim() == 3:
@@ -64,4 +72,5 @@ def build_model(cfg):
     return HFSegformerPeak(pretrained=m.get("pretrained", "nvidia/mit-b2"),
                            first_stride=m.get("first_stride", 4),
                            pad_to=m.get("pad_to", 32),
-                           drop_path=m.get("drop_path"))
+                           drop_path=m.get("drop_path"),
+                           enc_lr_mult=m.get("enc_lr_mult", 0.25))
