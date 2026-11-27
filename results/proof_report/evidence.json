@@ -7,13 +7,15 @@
   "01:20-01:33 PST: every first training attempt died at the first convolution with CUDNN_STATUS_NOT_INITIALIZED. Cause: CUDA-13 wheels in the shared venv had overwritten torch's cu12 cuDNN/NCCL/cuSPARSELt (not GPU hardware). Fixed by reinstalling the cu12 pins (h1, log runs/h1/envfix/uv.log); runs relaunched 01:34-01:38. The FAILED/CANCELLED steps in the sacct capture are these attempts.",
   "Labelled peaks are tiny (median 1-2 px, 4-35 peaks per 1920x1920 image; positive pixel fraction about 1e-6 to 1e-5). Models therefore use full-resolution heads (PixelShuffle or full-res decoders) and peak-centred training crops.",
   "Detection (RT-DETRv2-r18, boxes derived from the masks): whole-test mAP50 0.583. Validation AP50 peaked at iteration 400 (0.584 on 120 val images) and collapsed afterwards (0.073 at 800, 0.016 at 1200) while training losses stayed flat, so the val-selected iteration-400 checkpoint is reported; a lower-LR + EMA retry was stopped to give its GPU to the best_model ensemble. Many detection false positives are true peaks whose predicted box is smaller than the 3-px-padded label box (IoU < 0.5).",
-  "h7 (best_model): false positives of the best segmentation model on test overlays look like bright spots indistinguishable from labelled peaks, i.e. likely unlabelled real peaks; precision may be capped by label completeness (Not verified)."
+  "h7 (best_model): false positives of the best segmentation model on test overlays look like bright spots indistinguishable from labelled peaks, i.e. likely unlabelled real peaks; precision may be capped by label completeness (Not verified).",
+  "Independent check of the final best_model: h8 re-ran inference of the effb4 checkpoint with separate code and scored it with a separate matcher on all 1529 test images. Peak F1 0.92176 vs the reported 0.92172 (|diff| 4e-5). The earlier best_model version (final1 ensemble) re-scored from its saved maps matched exactly (0.918242)."
  ],
  "not_covered": [
   "Model statements without a result on main are listed as NOT RUN; this page is rebuilt as they land."
  ],
  "commands": [
   "# evidence figures (S3DF, repo root, shared venv)\npython scripts/proof_collect.py --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof --jobs 47394816 --live NAME=metrics.jsonl ... --logs NAME=train.log ...",
+  "# independent inference of the final best_model + scoring (S3DF; one GPU step each)\npython scripts/independent_infer.py --member smp_unet:/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h1/smp_effb4/best.pt:configs/smp_effb4.yaml --tta --f32 --out-probs DIR\npython scripts/independent_reeval.py --probs DIR --thr 0.9995 --split test --out reeval.json",
   "# independent re-evaluation of saved test probability maps (S3DF)\npython scripts/independent_reeval.py --probs <dir of store__idx.npy> --thr <val-picked thr> --split test --out reeval.json",
   "# page (local repo root)\npython3 scripts/proof_fetch.py peaknet-06 /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof && python3 scripts/make_proof_report.py --commit $(git rev-parse --short HEAD)"
  ],
@@ -85,12 +87,12 @@
   {
    "file": "results/proof_report/curves_lucid_segformer.png",
    "section": "lucid_segformer",
-   "caption": "<b>lucid_segformer</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_b/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+   "caption": "<b>lucid_segformer</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_d/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
   },
   {
    "file": "results/proof_report/evallog_lucid_segformer.png",
    "section": "lucid_segformer",
-   "caption": "<b>lucid_segformer</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+   "caption": "<b>lucid_segformer</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d_tta/eval.log</code>: the whole-test metrics JSON printed by the eval command."
   },
   {
    "file": "results/proof_report/ckpt_lucid_segformer.png",
@@ -115,12 +117,12 @@
   {
    "file": "results/proof_report/curves_best_model.png",
    "section": "best_model",
-   "caption": "<b>best_model</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+   "caption": "<b>best_model</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h1/smp_effb4/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
   },
   {
    "file": "results/proof_report/evallog_best_model.png",
    "section": "best_model",
-   "caption": "<b>best_model</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/best_model/final1/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+   "caption": "<b>best_model</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h1/smp_effb4/eval.log</code>: the whole-test metrics JSON printed by the eval command."
   },
   {
    "file": "results/proof_report/ckpt_best_model.png",
@@ -138,19 +140,38 @@
    "caption": "<b>Leaderboard</b> chart rendered on S3DF from <code>results/leaderboard/result.json</code>."
   },
   {
-   "file": "results/proof_report/reeval_cpu.png",
+   "file": "results/proof_report/reeval_effb4.png",
    "section": "reeval",
-   "caption": "<b>Independent read-back 1</b>: h8's scorer (<code>scripts/independent_reeval.py</code>: labels read from Zarr, peaks matched with <code>seg.viz.match_peaks</code>, no code from <code>seg/evaluate.py</code>) re-scores the 1529 saved test probability maps of best_model final1 at the val-picked threshold 0.7. Peak F1, TP/FP/FN and pixel IoU match h7's evaluation exactly."
+   "caption": "<b>Independent re-evaluation of the FINAL best_model checkpoint</b> (h1 smp U-Net EfficientNet-B4 <code>best.pt</code>), run by h8: own inference (<code>scripts/independent_infer.py</code>: Zarr reading, reflect padding, 4-flip TTA, float32 maps; Slurm steps 47394816.98/.99) and own scoring (<code>scripts/independent_reeval.py</code>) at the val-picked threshold 0.9995. Peak F1 0.921756 vs reported 0.921721 (TP 35330 vs 35336); the small difference comes from independent inference code (bf16 autocast, padding)."
   },
   {
-   "file": "results/proof_report/reeval_overlay_r0028_0007_18.png",
+   "file": "results/proof_report/reeval_effb4_overlay_r0028_0007_18.png",
    "section": "reeval",
-   "caption": "<b>Independent read-back overlay</b>: best_model final1 prediction on test image mfxl1027522_r0028.0007[18], rendered by the h8 re-evaluation from the saved probability map (matched green, missed red, false yellow)."
+   "caption": "<b>Independent re-evaluation overlay</b>: final best_model prediction on test image mfxl1027522_r0028.0007[18] from h8's own inference pass, rendered by seg.viz (matched green, missed red, false yellow)."
+  },
+  {
+   "file": "results/proof_report/reeval_cpu.png",
+   "section": "reeval",
+   "caption": "<b>Independent read-back 1</b>: h8's scorer (<code>scripts/independent_reeval.py</code>: labels read from Zarr, peaks matched with <code>seg.viz.match_peaks</code>, no code from <code>seg/evaluate.py</code>) re-scores the 1529 saved test probability maps of the previous best_model version (final1, h7 ensemble, test F1 .9182) at the val-picked threshold 0.7. Peak F1, TP/FP/FN and pixel IoU match h7's evaluation exactly."
   }
  ],
  "reeval": [
   {
-   "statement": "best_model",
+   "statement": "best_model (FINAL: h1 smp effb4 best.pt, 4-flip TTA, thr .9995) - h8 own inference + own scorer",
+   "reported_f1": 0.9217205310796358,
+   "tolerance": 0.002,
+   "n_images_scored": 1529,
+   "peak": {
+    "f1": 0.9217563724594955,
+    "tp": 35330,
+    "fp": 4088,
+    "fn": 1910
+   },
+   "pixel_iou": 0.49457317634457193,
+   "log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h8/indep_effb4/reeval.log"
+  },
+  {
+   "statement": "previous best_model version final1 (h7 ensemble smp r34 last + UNet++ r34 best, flip TTA, thr .7)",
    "what": "re-score of saved final1 test probability maps",
    "reported_f1": 0.9182422946216524,
    "tolerance": 0.002,
