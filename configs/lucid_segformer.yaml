@@ -9,6 +9,7 @@ model:
   refine: true
   refine_ch: 16
   prior: 0.01
+  sat: 60000.0
 train:
   crop: 512
   batch_size: 16
@@ -23,6 +24,8 @@ train:
   num_workers: 8
   amp: true
   grad_clip: 1.0
+  val_tile: 1024
+  thresholds: [0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998]
 loss:
   type: bce_dice
   pos_weight: 10.0

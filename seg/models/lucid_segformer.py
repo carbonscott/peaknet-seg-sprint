@@ -29,12 +29,17 @@ DEFAULTS = dict(
     refine_ch=16,
     prior=0.01,                        # initial peak probability (bias init)
     norm_eps=1.0,
+    sat=60000.0,                       # pixels >= sat are saturated/flagged (65535 lines at panel edges) -> 0
 )
 
 
-def normalize(x, eps=1.0):
-    """x (B,1,H,W) raw detector counts -> log1p(relu(x)) standardised per image."""
-    x = torch.log1p(torch.clamp(x.float(), min=0.0))
+def normalize(x, eps=1.0, sat=60000.0):
+    """x (B,1,H,W) raw detector counts -> log1p(relu(x)) standardised per image.
+    Saturated / flagged pixels (>= sat, e.g. the 65535 lines at panel edges) are zeroed first: without
+    this the model learns 'very bright = peak' and fires on every saturated line (val precision 0.1)."""
+    x = x.float()
+    x = torch.where(x >= sat, torch.zeros_like(x), x)
+    x = torch.log1p(torch.clamp(x, min=0.0))
     m = x.mean(dim=(-2, -1), keepdim=True)
     s = x.std(dim=(-2, -1), keepdim=True)
     return (x - m) / (s + 1e-3 * eps)
@@ -71,7 +76,7 @@ class LucidSegformerPeak(nn.Module):
             x = x[:, None]
         H, W = x.shape[-2:]
         ph, pw = (-H) % 32, (-W) % 32
-        x = normalize(x, self.c["norm_eps"])
+        x = normalize(x, self.c["norm_eps"], self.c["sat"])
         if ph or pw:
             x = F.pad(x, (0, pw, 0, ph))
         y = self.shuffle(self.seg(x))                  # (B,1,Hp,Wp) logits
