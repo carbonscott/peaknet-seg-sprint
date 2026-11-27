@@ -14,7 +14,7 @@ THRS=${THRS:-0.5,0.7,0.8,0.9,0.93,0.95,0.97,0.98,0.99,0.995,0.998,0.999}
 for c in best last; do
   [ -f $R/$c.pt ] || continue
   echo "== VAL sweep $c.pt"; date
-  python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt $R/$c.pt --split val \
+  python -m seg.evaluate --model hf_upernet --config ${CONFIG:-configs/hf_upernet.yaml} --ckpt $R/$c.pt --split val \
     --limit ${VAL_N:-500} --thr $THRS --out $EV/valsweep_${TAG}_$c.json --workers 6 2>&1 | grep -v "^\[evaluate\] *[0-9]*/" | tail -5
 done
 PICK=$(python - "$EV" "$TAG" <<'EOF'
@@ -36,7 +36,7 @@ EOF
 set -- $PICK "$@"; C=$1; T=$2; shift 2
 echo "VAL_PICK ckpt=$C.pt thr=$T"
 cp -f $R/$C.pt $CK/best.pt
-CMD="python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt $CK/best.pt --split test --thr $T --out $EV/metrics_$TAG.json --save-overlays $D/figures/h4/$EXP/$TAG --n-overlays 6 --workers 6 $*"
+CMD="python -m seg.evaluate --model hf_upernet --config ${CONFIG:-configs/hf_upernet.yaml} --ckpt $CK/best.pt --split test --thr $T --out $EV/metrics_$TAG.json --save-overlays $D/figures/h4/$EXP/$TAG --n-overlays 6 --workers 6 $*"
 echo "$CMD" > $EV/eval_cmd_$TAG.txt
 echo "== TEST: $CMD"; date
 $CMD

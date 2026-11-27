@@ -20,13 +20,17 @@ DEFAULTS = {
     "aux_head": False,
     "pad_multiple": 32,
     "clip_max": 65000.0,       # 65535 = saturated/bad pixels; clamp before log
+    "sat_value": None,         # e.g. 60000: zero saturated pixels before log (they cause confident false peaks)
     "head": "bilinear",        # "bilinear" = stock UperNet upsampling of 1/r logits;
                                # "shuffle" = classifier emits r*r channels -> PixelShuffle(r) full-res logits
 }
 
 
-def normalize(x, clip_max=65000.0):
-    """(B,1,H,W) raw ADU -> log1p, per-image zero mean / unit std."""
+def normalize(x, clip_max=65000.0, sat_value=None):
+    """(B,1,H,W) raw ADU -> log1p, per-image zero mean / unit std.
+    sat_value: pixels >= sat_value (65535 saturated/bad-pixel lines, never labelled as peaks) are set to 0 first."""
+    if sat_value:
+        x = torch.where(x >= sat_value, torch.zeros_like(x), x)
     x = torch.log1p(x.clamp(min=0.0, max=clip_max))
     m = x.mean(dim=(2, 3), keepdim=True)
     s = x.std(dim=(2, 3), keepdim=True).clamp(min=1e-3)
@@ -96,7 +100,7 @@ class HFUperNetPeak(nn.Module):
         if x.dim() == 3:
             x = x[:, None]
         B, _, H, W = x.shape
-        x = normalize(x, self.c["clip_max"])
+        x = normalize(x, self.c["clip_max"], self.c.get("sat_value"))
         p = int(self.c["pad_multiple"])
         ph, pw = (-H) % p, (-W) % p
         if ph or pw:
