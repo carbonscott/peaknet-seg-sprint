@@ -1,0 +1,3 @@
+model: {ch: 16}
+train: {crop: 256, batch_size: 8, crops_per_image: 4, lr: 1.0e-3, num_workers: 2, max_steps: 20}
+loss: {type: focal_dice}
