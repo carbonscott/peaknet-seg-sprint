@@ -10,6 +10,8 @@ seg head 256 ch, bilinear 4x upsample). Glue only:
   - input normalisation: "log1p_std" (clamp, log1p, per-image standardisation; default) or
     "instance" (upstream InstanceNorm: per-image mean/std of the raw image)
   - pad H, W to a multiple of 32 (reflect), crop logits back to (H, W).
+  - optional patch_size 2 (stem stride 2 instead of 4): same layers, every feature map at 2x resolution,
+    seg-head upsampling factors scaled to match; ~4x compute.
 
 Contract (ORDER 2): build_model(cfg) -> nn.Module; forward(x (B,1,H,W) float32) -> logits (B,1,H,W).
 """
@@ -18,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 DEFAULTS = {
+    "patch_size": 4,          # ConvNeXtV2 stem stride; 2 = features and logits at 1/2 res (peaks are 1-2 px)
     "hidden_sizes": [96, 192, 384, 768],
     "depths": [3, 3, 9, 3],
     "drop_path_rate": 0.0,
@@ -49,7 +52,8 @@ def build_peaknet(c):
     from peaknet.modeling.bifpn_config import BiFPNConfig, BiFPNBlockConfig, BNConfig, FusionConfig
     from peaknet.modeling.convnextv2_bifpn_net import PeakNet, PeakNetConfig, SegHeadConfig
 
-    backbone = ConvNextV2Config(num_channels=1, patch_size=4, num_stages=4,
+    ps = int(c.get("patch_size", 4))
+    backbone = ConvNextV2Config(num_channels=1, patch_size=ps, num_stages=4,
                                 hidden_sizes=list(c["hidden_sizes"]), depths=list(c["depths"]),
                                 hidden_act="gelu", initializer_range=0.02, layer_norm_eps=1e-12,
                                 drop_path_rate=float(c["drop_path_rate"]), image_size=256,
@@ -59,7 +63,7 @@ def build_peaknet(c):
                                                num_features=int(c["bifpn_features"]), num_levels=4,
                                                base_level=int(c["bifpn_base_level"]),
                                                bn=BNConfig(eps=1e-5, momentum=0.1), fusion=FusionConfig(eps=1e-5)))
-    head = SegHeadConfig(up_scale_factor=[4, 8, 16, 32], num_groups=int(c["head_groups"]),
+    head = SegHeadConfig(up_scale_factor=[ps, 2 * ps, 4 * ps, 8 * ps], num_groups=int(c["head_groups"]),
                          out_channels=int(c["head_channels"]), num_classes=1, base_scale_factor=2,
                          uses_learned_upsample=bool(c["uses_learned_upsample"]))
     return PeakNet(PeakNetConfig(backbone=backbone, bifpn=bifpn, seg_head=head))
