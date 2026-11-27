@@ -21,6 +21,7 @@ def main():
     ap.add_argument("--wallclock", type=float, required=True)
     ap.add_argument("--config", default=None)
     ap.add_argument("--eval-tag", default="test")
+    ap.add_argument("--thr-from", default="sweep on the whole val split (metrics_val_<tag>.json)")
     ap.add_argument("--extra", default=None, help="JSON object merged into the top level")
     a = ap.parse_args()
     m = json.load(open(a.metrics))
@@ -45,7 +46,7 @@ def main():
                   "metrics_jsonl": base % "logs" + "/metrics.jsonl"},
         "checkpoint": base % "checkpoints" + "/best.pt",
         "eval": {"split": "test", "n_images": m["n_images"], "peak_tol_px": m["peak_tol_px"],
-                 "threshold": m["threshold"], "threshold_from": "val (stored in best.pt by seg.train)",
+                 "threshold": m["threshold"], "threshold_from": a.thr_from,
                  "tta": m.get("tta", False),
                  "pixel": {k: m["pixel"][k] for k in ("iou", "f1", "precision", "recall")},
                  "peak": {k: m["peak"][k] for k in ("f1", "precision", "recall")},
