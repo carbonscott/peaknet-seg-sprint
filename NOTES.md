@@ -116,3 +116,5 @@ One short dated entry per finding (PST).
   .924 at step 10000. A 300-image val grid picked flip-TTA at thr .9995 (F1 .927; no-TTA .923 at .9999;
   saturated masking no gain because `norm_log` already zeroes >= 60000). Whole test: peak F1 0.9217 (P .896,
   R .949), pixel IoU .495, the best single model of the run; used as `best_model`.
+- 04:40 Dead end: mean-prob ensemble of smp effb4 + smp UNet++ r34 scored val peak F1 .928 on the same 300 val
+  images vs .927 for effb4 alone (flip-TTA, thr sweep to .9999). No test pass; `best_model` stays effb4 alone.
