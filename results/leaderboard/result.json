@@ -44,6 +44,26 @@
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d_tta/eval.log"
   },
   {
+   "statement": "peaknet_baseline",
+   "model": "PeakNet (carbonscott/peaknet: ConvNeXtV2 [96..768]x[3,3,9,3] + BiFPN 256 + seg head), trained from scratch, 1 binary logit, saturated pixels zeroed, pointwise log input norm",
+   "peak_f1": 0.894933075829511,
+   "peak_precision": 0.8939499490916886,
+   "peak_recall": 0.8959183673469387,
+   "pixel_iou": 0.30706063583324233,
+   "pixel_f1": 0.4698491063308524,
+   "n_test_images": 1529,
+   "peak_tol_px": 3,
+   "threshold": 0.99,
+   "train_gpus": 1,
+   "train_wallclock_min": 49.64,
+   "upstream": [
+    "https://github.com/carbonscott/peaknet",
+    "https://github.com/huggingface/transformers"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h2/pk_d/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_d/eval.log"
+  },
+  {
    "statement": "hf_upernet",
    "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice",
    "peak_f1": 0.8885877708433766,
@@ -82,26 +102,6 @@
    ],
    "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h6/xu_d/best.pt",
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/eval.log"
-  },
-  {
-   "statement": "peaknet_baseline",
-   "model": "PeakNet (carbonscott/peaknet ConvNeXtV2-tiny-like [96..768]x[3,3,9,3] + BiFPN 256 + seg head), from scratch, 1 binary logit, log1p+std norm, saturated pixels zeroed",
-   "peak_f1": 0.8054159033622126,
-   "peak_precision": 0.8268148525211391,
-   "peak_recall": 0.7850966702470462,
-   "pixel_iou": 0.2232677339745618,
-   "pixel_f1": 0.3650349433302468,
-   "n_test_images": 1529,
-   "peak_tol_px": 3,
-   "threshold": 0.999,
-   "train_gpus": 1,
-   "train_wallclock_min": 55.39,
-   "upstream": [
-    "https://github.com/carbonscott/peaknet",
-    "https://github.com/huggingface/transformers"
-   ],
-   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h2/pk_b/best.pt",
-   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/eval.log"
   }
  ]
 }

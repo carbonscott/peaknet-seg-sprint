@@ -118,3 +118,21 @@ One short dated entry per finding (PST).
   R .949), pixel IoU .495, the best single model of the run; used as `best_model`.
 - 04:40 Dead end: mean-prob ensemble of smp effb4 + smp UNet++ r34 scored val peak F1 .928 on the same 300 val
   images vs .927 for effb4 alone (flip-TTA, thr sweep to .9999). No test pass; `best_model` stays effb4 alone.
+
+## evalkit + peaknet_baseline (h2, crew A-core), 2026-11-27 PST
+
+- 01:20 `seg/evaluate.py` peak matching: centroids of 8-connected components, candidate pairs within 3 px (cKDTree),
+  then one-to-one maximum bipartite matching (Hopcroft-Karp; equals Hungarian with 0/1 costs, i.e. maximises TP).
+  `ndimage.center_of_mass` was the bottleneck (2 s per 1920x1920 image); a `bincount` mean of pixel coordinates gives
+  identical centroids in 0.1 s.
+- 02:00 PeakNet's precision was capped by saturated 65535 pixels: the wrapper only clamped them, so they became the
+  brightest input and the model fired on the unlabelled runs along panel edges (pk_a val peak F1 .57, P .40 R .97).
+  Zeroing pixels >= 60000 in the adapter and fine-tuning (pk_b) gave val .82; test peak F1 .805 at a val-picked thr .999.
+- 03:10 For one-step train+eval jobs, `seg.evaluate` reads `eval: {val_thr: [...], val_every: k}` from the model
+  config at eval start: it sweeps those thresholds on val and reports test at the val-best one. The config can be
+  edited on S3DF while the job is still training, without a restart.
+- 04:05 Pointwise input normalisation (`seg.infer.norm_log`, fixed centre/scale) instead of per-image standardisation
+  (h5's finding) also helps PeakNet: fine-tuning pk_b with it gave val peak F1 .877 after 1000 steps (pk_b .820), and
+  the best threshold moved from .998 down to .5. Dead end: a lower-lr, focal alpha .5 continuation (pk_c) did not help.
+- 04:51 pk_d (pointwise-norm fine-tune of pk_b, 50 min) whole test: peak F1 .895 (P .894 R .896), pixel IoU .307 at
+  a val-picked thr .99, up from pk_b's .805. This is the landed peaknet_baseline.
