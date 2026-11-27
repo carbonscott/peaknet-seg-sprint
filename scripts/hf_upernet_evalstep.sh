@@ -14,7 +14,7 @@ CFG=${CONFIG:-configs/hf_upernet.yaml}
 for c in best last; do
   [ -f $R/$c.pt ] || continue
   echo "== VAL grid $c.pt (scripts/val_grid.py: flip-TTA x saturated mask 0/1/2 x thr .5-.999)"; date
-  python scripts/val_grid.py --member hf_upernet:$R/$c.pt:$CFG --n ${VAL_N:-400} --masks 0,1,2 --min-sizes 0 \
+  python scripts/val_grid.py --member hf_upernet:$R/$c.pt:$CFG --n ${VAL_N:-400} --masks 0,1,2 --min-sizes 0 --thrs 0.5,0.7,0.8,0.9,0.95,0.97,0.98,0.99,0.995,0.998,0.999,0.9995,0.9998,0.9999 \
     --out $EV/valgrid_${TAG}_$c.json --workers 6 2>&1 | grep -v "^\[val_grid\]" | tail -3
 done
 PICK=$(python - "$EV" "$TAG" <<'EOF2'
