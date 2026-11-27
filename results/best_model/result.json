@@ -1,8 +1,8 @@
 {
  "statement": "best_model",
- "model": "segmentation-models-pytorch Unet (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; snapshot at step 6000 of run smp_r34_a; threshold 0.97 picked on val",
+ "model": "segmentation-models-pytorch UNet++ (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; best val checkpoint (step 5000) of run smp_upp34_a; threshold 0.99 picked on val",
  "based_on": [
-  "smp_unet (h7 run smp_r34_a, step-6000 best.pt snapshot)"
+  "smp_unet UnetPlusPlus (h7 run smp_upp34_a, best.pt step 5000)"
  ],
  "upstream": [
   {
@@ -28,57 +28,58 @@
   "seg/data.py"
  ],
  "train": {
-  "slurm_jobid": "47394816.51",
+  "slurm_jobid": "47394816.57",
   "gpus": 1,
-  "wallclock_min": 24,
+  "wallclock_min": 89.8,
   "train_images": 15989,
   "config": "configs/smp_unet.yaml",
-  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/train.log",
-  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/metrics.jsonl",
-  "node": "sdfada013 (L40S idx 1, shared with a 2nd run)",
-  "steps_at_snapshot": 6000,
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_upp34_a/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_upp34_a/metrics.jsonl",
+  "node": "sdfada013 (L40S idx 1, shared with smp_r34_a)",
+  "best_step": 5000,
+  "total_steps": 10469,
   "crops_per_step": 16,
   "crop": 512,
-  "command": "python -m seg.train --model smp_unet --config configs/smp_unet.yaml --out $PK/runs/h7/smp_r34_a --time-min 110 --set train.num_workers=7"
+  "command": "python -m seg.train --model smp_unet --config configs/smp_unet.yaml --out $PK/runs/h7/smp_upp34_a --time-min 90 --set model.arch=UnetPlusPlus --set train.num_workers=5 --set train.seed=1 --set train.max_steps=25000"
  },
- "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt",
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt",
  "eval": {
   "split": "test",
   "n_images": 1529,
   "peak_tol_px": 3,
-  "threshold": 0.97,
-  "threshold_from": "val sweep (seg.evaluate --val-thr, every 3rd val image)",
+  "threshold": 0.99,
+  "threshold_from": "val sweep (--val-thr)",
   "tta": false,
   "pixel": {
-   "iou": 0.5088215410490213,
-   "f1": 0.6744621907972745,
-   "precision": 0.8827307054179301,
-   "recall": 0.545709359388125
+   "iou": 0.5271411140058702,
+   "f1": 0.6903633320736382,
+   "precision": 0.8863658418243571,
+   "recall": 0.5653477165215085
   },
   "peak": {
-   "f1": 0.906115050381191,
-   "precision": 0.8995448290462581,
-   "recall": 0.912781954887218
+   "f1": 0.9141432133950838,
+   "precision": 0.8986225323614101,
+   "recall": 0.9302094522019334
   },
   "counts": {
    "pixel": {
-    "tp": 61717,
-    "fp": 8199,
-    "fn": 51378
+    "tp": 63938,
+    "fp": 8197,
+    "fn": 49157
    },
    "peak": {
-    "tp": 33992,
-    "fp": 3796,
-    "fn": 3248
+    "tp": 34641,
+    "fp": 3908,
+    "fn": 2599
    }
   },
-  "eval_cmd": "python -m seg.evaluate --model smp_unet --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt --split test --val-thr 0.5,0.7,0.8,0.9,0.95,0.97,0.98,0.99,0.995 --val-every 3 --workers 4 --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h7/smp_r34_a/snap1 --n-overlays 4 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_test.json",
-  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log",
-  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_test.json",
+  "eval_cmd": "python -m seg.evaluate --model smp_unet --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_upp34_a/best.pt --split test --val-thr 0.5,0.7,0.8,0.9,0.95,0.97,0.98,0.99,0.995 --val-every 3 --workers 4 --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h7/smp_upp34_a/best --n-overlays 4 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_upp34_a/best_test.json",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_upp34_a/best_eval.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_upp34_a/best_test.json",
   "val_threshold_sweep_images": 488
  },
  "proof": [
-  "results/best_model/overlay_test_snap1.png"
+  "results/best_model/overlay_test_upp34.png"
  ],
- "notes": "EARLY landing (lead ORDER 14) on a snapshot of a still-running run: best.pt at step 6000 (val peak F1 0.917 on 150 val images at thr 0.9 in-training). Threshold re-picked by seg.evaluate on every 3rd val image (488 imgs) over 0.5..0.995 -> 0.97 (val F1 0.911), then the whole test split (1529 images) at 0.97. Single model, no TTA, no post-processing. Findings: full-res decoder matters for 1-2 px peaks; FPs are confident 1-2 px blobs far from labeled peaks (likely unlabeled weak peaks/hot pixels), min-size/closing post-processing did not help on val; higher thresholds did. Will be replaced by the final ensemble (smp Unet r34 + smp UNet++ r34 [+ team models], flip TTA) if it beats this on test with val-picked threshold."
+ "notes": "Interim update (replaces the 0.9061 smp Unet r34 snapshot). Single model, no TTA, no post-processing: smp UNet++ r34 best val checkpoint (step 5000 of 10469; in-training val F1 0.9285 on 150 val imgs at thr 0.9). Threshold re-picked by seg.evaluate on every 3rd val image (488 imgs) over 0.5..0.995 -> 0.99 (val F1 0.922), then the whole test split (1529 images). Earlier: smp Unet r34 snapshot test F1 0.9061. Findings: full-res decoders matter for 1-2 px peaks; FPs are confident 1-2 px spots far from labeled peaks that look like real unlabeled peaks (precision ceiling ~0.9 from the labels); min-size/closing post-processing did not help; flip TTA +0.002 on val; saturated-pixel masking no effect for this model. Next: val-selected ensemble (r34 last + UNet++ best, flip TTA) running."
 }
