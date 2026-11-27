@@ -55,8 +55,8 @@ res = {
              "eval_cmd": cmd,
              "remote_log": "%s/eval_%s.log" % (ev_dir, a.tag),
              "metrics_json": "%s/metrics_%s.json" % (ev_dir, a.tag),
-             "threshold_from": "val (first 400 val images; sweep 0.5..0.999 over best.pt/last.pt and "
-                               "PK_MASK_SATURATED 0/1; see val_pick_%s.json)" % a.tag,
+             "threshold_from": "val (scripts/val_grid.py on 400 evenly spaced val images; best.pt/last.pt x flip-TTA x "
+                               "PK_MASK_SATURATED 0/1/2 x thr 0.5..0.9999; %s/val_pick_%s.json)" % (ev_dir, a.tag),
              "val_pick": json.load(open(a.val_pick)) if a.val_pick else None},
     "proof": a.proof,
     "notes": a.notes,
