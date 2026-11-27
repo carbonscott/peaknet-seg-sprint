@@ -7,8 +7,9 @@ hyper-parameters are taken unchanged from peaknet/train/hydra_config/train_confi
 seg head 256 ch, bilinear 4x upsample). Glue only:
   - seg head num_classes 2 -> 1 (one binary peak logit; upstream uses 2-class softmax focal loss,
     which is equivalent to a sigmoid of the logit difference)
-  - input normalisation: "log1p_std" (clamp, log1p, per-image standardisation; default) or
-    "instance" (upstream InstanceNorm: per-image mean/std of the raw image)
+  - input normalisation: "log1p_std" (clamp, log1p, per-image standardisation; default),
+    "instance" (upstream InstanceNorm: per-image mean/std of the raw image) or "pointwise"
+    (seg.infer.norm_log: signed log1p with fixed centre/scale, saturated -> 0; keeps absolute brightness)
   - pad H, W to a multiple of 32 (reflect), crop logits back to (H, W).
   - optional sat_zero: saturated pixels (>= sat_zero ADU, unlabelled 65535 runs) set to 0 before normalising
   - optional patch_size 2 (stem stride 2 instead of 4): same layers, every feature map at 2x resolution,
@@ -39,6 +40,9 @@ DEFAULTS = {
 
 
 def normalize(x, how="log1p_std", clip_max=65000.0):
+    if how == "pointwise":  # shared seg.infer.norm_log: signed log1p, fixed centre/scale (keeps absolute brightness)
+        from seg.infer import norm_log
+        return norm_log(x)
     if how == "instance":  # upstream peaknet.tensor_transforms.InstanceNorm
         m = x.mean(dim=(1, 2, 3), keepdim=True)
         s = x.std(dim=(1, 2, 3), keepdim=True)
