@@ -61,6 +61,16 @@ class HFUperNetPeak(nn.Module):
             old = self.net.decode_head.classifier
             self.net.decode_head.classifier = nn.Conv2d(old.in_channels, st * st, kernel_size=1)
             self.shuffle = nn.PixelShuffle(st)
+        # RetinaNet-style prior bias for a very sparse positive class (peaks ~1e-5 of pixels)
+        nn.init.constant_(self.net.decode_head.classifier.bias, float(c.get("prior_bias", -4.6)))
+
+    def param_groups(self, lr):
+        """Used by seg/train.py: pretrained backbone at lr * backbone_lr_mult, decoder/head at lr."""
+        mult = float(self.c.get("backbone_lr_mult", 0.5))
+        bb = [p for p in self.net.backbone.parameters() if p.requires_grad]
+        ids = {id(p) for p in bb}
+        rest = [p for p in self.parameters() if p.requires_grad and id(p) not in ids]
+        return [{"params": bb, "lr": lr * mult}, {"params": rest, "lr": lr}]
 
     def train(self, mode=True):
         # UperNet's pyramid-pooling module ends in BatchNorm after a 1x1 adaptive pool, which fails
