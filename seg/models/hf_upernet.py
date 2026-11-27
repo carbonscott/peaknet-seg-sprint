@@ -20,6 +20,8 @@ DEFAULTS = {
     "aux_head": False,
     "pad_multiple": 32,
     "clip_max": 65000.0,       # 65535 = saturated/bad pixels; clamp before log
+    "head": "bilinear",        # "bilinear" = stock UperNet upsampling of 1/r logits;
+                               # "shuffle" = classifier emits r*r channels -> PixelShuffle(r) full-res logits
 }
 
 
@@ -54,6 +56,11 @@ class HFUperNetPeak(nn.Module):
             pe.stride = (st, st)
             # keep 4x4 kernel; pad so output = ceil(H/st)
             pe.padding = ((4 - st) // 2, (4 - st) // 2) if st < 4 else (0, 0)
+        self.shuffle = None
+        if c["head"] == "shuffle":
+            old = self.net.decode_head.classifier
+            self.net.decode_head.classifier = nn.Conv2d(old.in_channels, st * st, kernel_size=1)
+            self.shuffle = nn.PixelShuffle(st)
 
     def train(self, mode=True):
         # UperNet's pyramid-pooling module ends in BatchNorm after a 1x1 adaptive pool, which fails
@@ -74,6 +81,12 @@ class HFUperNetPeak(nn.Module):
         if ph or pw:
             x = F.pad(x, (0, pw, 0, ph), mode="reflect")
         x = x.expand(-1, 3, -1, -1)
+        if self.shuffle is not None:
+            feats = self.net.backbone(pixel_values=x).feature_maps
+            logits = self.shuffle(self.net.decode_head(feats))
+            if logits.shape[-2:] != x.shape[-2:]:
+                logits = F.interpolate(logits, size=x.shape[-2:], mode="bilinear", align_corners=False)
+            return logits[..., :H, :W]
         out = self.net(pixel_values=x)
         logits = out.logits
         if self.training and getattr(out, "auxiliary_logits", None) is not None:
