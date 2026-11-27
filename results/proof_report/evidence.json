@@ -44,6 +44,66 @@
    "caption": "<b>Training in progress</b> (snapshot when the page was built): validation peak F1 and loss from the live <code>metrics.jsonl</code> of each crew's run."
   },
   {
+   "file": "results/proof_report/curves_peaknet_baseline.png",
+   "section": "peaknet_baseline",
+   "caption": "<b>peaknet_baseline</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h2/pk_b/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+  },
+  {
+   "file": "results/proof_report/evallog_peaknet_baseline.png",
+   "section": "peaknet_baseline",
+   "caption": "<b>peaknet_baseline</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+  },
+  {
+   "file": "results/proof_report/ckpt_peaknet_baseline.png",
+   "section": "peaknet_baseline",
+   "caption": "<b>peaknet_baseline</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
+   "file": "results/proof_report/curves_hf_upernet.png",
+   "section": "hf_upernet",
+   "caption": "<b>hf_upernet</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h4/upn_a/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+  },
+  {
+   "file": "results/proof_report/evallog_hf_upernet.png",
+   "section": "hf_upernet",
+   "caption": "<b>hf_upernet</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/eval_test.log</code>: the whole-test metrics JSON printed by the eval command."
+  },
+  {
+   "file": "results/proof_report/ckpt_hf_upernet.png",
+   "section": "hf_upernet",
+   "caption": "<b>hf_upernet</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
+   "file": "results/proof_report/curves_lucid_segformer.png",
+   "section": "lucid_segformer",
+   "caption": "<b>lucid_segformer</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_b/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+  },
+  {
+   "file": "results/proof_report/evallog_lucid_segformer.png",
+   "section": "lucid_segformer",
+   "caption": "<b>lucid_segformer</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+  },
+  {
+   "file": "results/proof_report/ckpt_lucid_segformer.png",
+   "section": "lucid_segformer",
+   "caption": "<b>lucid_segformer</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
+   "file": "results/proof_report/curves_lucid_unet.png",
+   "section": "lucid_unet",
+   "caption": "<b>lucid_unet</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h6/xu_d/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
+  },
+  {
+   "file": "results/proof_report/evallog_lucid_unet.png",
+   "section": "lucid_unet",
+   "caption": "<b>lucid_unet</b> evaluation log tail <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/eval.log</code>: the whole-test metrics JSON printed by the eval command."
+  },
+  {
+   "file": "results/proof_report/ckpt_lucid_unet.png",
+   "section": "lucid_unet",
+   "caption": "<b>lucid_unet</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
    "file": "results/proof_report/curves_best_model.png",
    "section": "best_model",
    "caption": "<b>best_model</b> training curves from <code>/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h7/smp_r34_a/metrics.jsonl</code> (val peak F1 at the val-picked threshold; training loss)."
@@ -57,6 +117,16 @@
    "file": "results/proof_report/ckpt_best_model.png",
    "section": "best_model",
    "caption": "<b>best_model</b> checkpoint on durable S3DF storage (listing + sha256)."
+  },
+  {
+   "file": "results/proof_report/curves_all.png",
+   "section": "curves",
+   "caption": "<b>All models</b>: validation peak F1 and training loss vs step, from each run's <code>metrics.jsonl</code>."
+  },
+  {
+   "file": "results/proof_report/leaderboard.png",
+   "section": "leaderboard",
+   "caption": "<b>Leaderboard</b> chart rendered on S3DF from <code>results/leaderboard/result.json</code>."
   }
  ]
 }
