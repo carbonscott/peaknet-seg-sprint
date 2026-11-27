@@ -23,6 +23,7 @@ ap.add_argument("--train-images", type=int, default=15989)
 ap.add_argument("--proof", nargs="+", default=[])
 ap.add_argument("--notes", default="")
 ap.add_argument("--eval-cmd", default=None)
+ap.add_argument("--val-pick", default=None, help="local copy of val_pick_<tag>.json")
 a = ap.parse_args()
 
 m = json.load(open(a.metrics))
@@ -38,7 +39,8 @@ res = {
         {"url": "https://github.com/huggingface/transformers", "ref": "v4.57.6 (UperNetForSemanticSegmentation)"},
     ],
     "code": ["seg/models/hf_upernet.py", a.config, "seg/train.py", "seg/losses.py", "seg/infer.py",
-             "seg/evaluate.py", "seg/data.py", "scripts/hf_upernet_launch.sh", "scripts/hf_upernet_eval.sh"],
+             "seg/evaluate.py", "seg/data.py", "scripts/hf_upernet_launch.sh", "scripts/hf_upernet_eval.sh",
+             "scripts/hf_upernet_evalstep.sh"],
     "train": {"slurm_jobid": a.jobid, "gpus": a.gpus, "wallclock_min": a.wallclock_min,
               "train_images": a.train_images, "config": a.config,
               "remote_log": "%s/logs/h4/%s/train.log" % (D, a.exp),
@@ -52,7 +54,10 @@ res = {
                         "pixel": {k: m["pixel"].get(k) for k in ("tp", "fp", "fn")}},
              "eval_cmd": cmd,
              "remote_log": "%s/eval_%s.log" % (ev_dir, a.tag),
-             "metrics_json": "%s/metrics_%s.json" % (ev_dir, a.tag)},
+             "metrics_json": "%s/metrics_%s.json" % (ev_dir, a.tag),
+             "threshold_from": "val (first 400 val images; sweep 0.5..0.999 over best.pt/last.pt and "
+                               "PK_MASK_SATURATED 0/1; see val_pick_%s.json)" % a.tag,
+             "val_pick": json.load(open(a.val_pick)) if a.val_pick else None},
     "proof": a.proof,
     "notes": a.notes,
 }
