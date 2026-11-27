@@ -94,8 +94,10 @@ def predict_prob(model, x, tile=None, overlap=64, amp=True, tta=False, multiple=
 
 
 @torch.no_grad()
-def predict_full(model, image, device="cuda", tile=None, overlap=64, amp=True, tta=False, multiple=32):
-    """One image (H,W) / (1,H,W) numpy or tensor -> np.float32 prob map (H,W)."""
+def predict_full(model, image, device=None, tile=None, overlap=64, amp=True, tta=False, multiple=32):
+    """One image (H,W) / (1,H,W) numpy or tensor -> np.float32 prob map (H,W). device defaults to the model's."""
+    if device is None:
+        device = next(model.parameters()).device
     x = _as_bchw(image).to(device)
     p = predict_prob(model, x, tile, overlap, amp, tta, multiple)
     return p[0, 0].float().cpu().numpy()

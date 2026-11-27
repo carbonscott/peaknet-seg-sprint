@@ -159,44 +159,20 @@ def crop_collate(batch):
 
 
 # ----------------------------------------------------------------------------- metrics
-def _peak_counts_fallback(pred, target, tol=3.0):
-    from scipy import ndimage
-    from scipy.optimize import linear_sum_assignment
-    from scipy.spatial import cKDTree
-    st = np.ones((3, 3), bool)
-
-    def cents(m):
-        lab, n = ndimage.label(m, structure=st)
-        if n == 0:
-            return np.zeros((0, 2))
-        return np.array(ndimage.center_of_mass(m, lab, range(1, n + 1)))
-
-    a, b = cents(pred), cents(target)
-    if len(a) == 0 or len(b) == 0:
-        return 0, len(a), len(b)
-    pairs = cKDTree(a).query_ball_tree(cKDTree(b), tol)
-    rows = [i for i, p in enumerate(pairs) if p]
-    if not rows:
-        return 0, len(a), len(b)
-    cols = sorted({j for p in pairs for j in p})
-    ci = {j: k for k, j in enumerate(cols)}
-    cost = np.full((len(rows), len(cols)), 1e6)
-    for r, i in enumerate(rows):
-        for j in pairs[i]:
-            cost[r, ci[j]] = np.hypot(*(a[i] - b[j]))
-    rr, cc = linear_sum_assignment(cost)
-    tp = int((cost[rr, cc] <= tol).sum())
-    return tp, len(a) - tp, len(b) - tp
-
-
-def peak_counts(pred, target, tol=3.0):
-    """(tp, fp, fn) for one (H,W) binary pred vs target, using seg.evaluate when present."""
-    try:
-        from seg.evaluate import peak_metrics
-        r = peak_metrics(pred.astype(np.int64), target.astype(np.int64), cls=1, tol=tol)
-        return int(r["tp"]), int(r["fp"]), int(r["fn"])
-    except ImportError:
-        return _peak_counts_fallback(pred, target, tol)
+@torch.no_grad()
+def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1):
+    """Team metric (seg.evaluate.Accumulator) over val images idxs at full resolution.
+    Returns counts array (len(thrs), 6): pixel tp,fp,fn ; peak tp,fp,fn."""
+    from seg.evaluate import Accumulator
+    model.eval()
+    acc = Accumulator(thrs)
+    for i in idxs:
+        it = val_ds[i]
+        img = torch.from_numpy(_hw(it["image"]).astype(np.float32))[None, None].to(device)
+        prob = predict_prob(model, img, tile=tile)[0, 0].float().cpu().numpy()
+        acc.add_prob(prob, _hw(it["label"]) == peak_label)
+    model.train()
+    return np.stack([acc.c[float(t)] for t in thrs]).astype(np.float64)
 
 
 def prf(tp, fp, fn):
@@ -204,34 +180,6 @@ def prf(tp, fp, fn):
     r = tp / (tp + fn) if tp + fn else 1.0
     f = 2 * p * r / (p + r) if p + r else 0.0
     return p, r, f
-
-
-MAX_COMPONENTS = 20000  # a near-empty early model can fire everywhere; skip matching then
-
-
-@torch.no_grad()
-def validate(model, val_ds, idxs, thrs, device, tile=None, peak_label=1, tol=3.0):
-    """Returns counts array (len(thrs), 6): peak tp,fp,fn ; pixel tp,fp,fn (summed over idxs)."""
-    from scipy import ndimage
-    model.eval()
-    out = np.zeros((len(thrs), 6), np.float64)
-    for i in idxs:
-        it = val_ds[i]
-        img = torch.from_numpy(_hw(it["image"]).astype(np.float32))[None, None].to(device)
-        gt = _hw(it["label"]) == peak_label
-        prob = predict_prob(model, img, tile=tile)[0, 0].float().cpu().numpy()
-        for k, t in enumerate(thrs):
-            pm = prob > t
-            ptp = int((pm & gt).sum())
-            out[k, 3:] += (ptp, int(pm.sum()) - ptp, int(gt.sum()) - ptp)
-            _, n = ndimage.label(pm, structure=np.ones((3, 3), bool))
-            if n > MAX_COMPONENTS:
-                _, ngt = ndimage.label(gt, structure=np.ones((3, 3), bool))
-                out[k, :3] += (0, n, ngt)
-            else:
-                out[k, :3] += peak_counts(pm, gt, tol)
-    model.train()
-    return out
 
 
 # ----------------------------------------------------------------------------- main
@@ -396,9 +344,9 @@ def main(argv=None):
                 c = ct.cpu().numpy()
             res = []
             for kk, t in enumerate(thrs):
-                p, r, f1 = prf(*c[kk, :3])
-                pp, prr, pf = prf(*c[kk, 3:])
-                iou = c[kk, 3] / (c[kk, 3] + c[kk, 4] + c[kk, 5]) if c[kk, 3:].sum() else 1.0
+                p, r, f1 = prf(*c[kk, 3:])
+                pp, prr, pf = prf(*c[kk, :3])
+                iou = c[kk, 0] / (c[kk, 0] + c[kk, 1] + c[kk, 2]) if c[kk, :3].sum() else 1.0
                 res.append(dict(thr=t, peak_f1=f1, peak_p=p, peak_r=r, pix_f1=pf, pix_iou=iou))
             bi = max(range(len(res)), key=lambda q: res[q]["peak_f1"])
             val_cost = time.time() - tv
