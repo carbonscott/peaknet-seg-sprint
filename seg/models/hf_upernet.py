@@ -64,6 +64,17 @@ class HFUperNetPeak(nn.Module):
         # RetinaNet-style prior bias for a very sparse positive class (peaks ~1e-5 of pixels)
         nn.init.constant_(self.net.decode_head.classifier.bias, float(c.get("prior_bias", -4.6)))
 
+    def load_state_dict(self, state_dict, strict=True, **kw):
+        """strict=False (seg.train --init-ckpt) also skips shape-mismatched keys, e.g. a 16-ch shuffle
+        classifier loaded into a stem_stride-2 model (4-ch). strict=True (evaluation) is unchanged."""
+        if not strict:
+            own = self.state_dict()
+            skipped = [k for k, v in state_dict.items() if k in own and own[k].shape != v.shape]
+            if skipped:
+                print("[hf_upernet] init: skipping shape-mismatched keys %s" % skipped, flush=True)
+            state_dict = {k: v for k, v in state_dict.items() if k not in skipped}
+        return super().load_state_dict(state_dict, strict=strict, **kw)
+
     def param_groups(self, lr):
         """Used by seg/train.py: pretrained backbone at lr * backbone_lr_mult, decoder/head at lr."""
         mult = float(self.c.get("backbone_lr_mult", 0.5))
