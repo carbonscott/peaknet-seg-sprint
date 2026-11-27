@@ -102,6 +102,26 @@
    ],
    "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h6/xu_d/best.pt",
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h6/xu_d/eval.log"
+  },
+  {
+   "statement": "hf_segformer",
+   "model": "Hugging Face SegformerForSemanticSegmentation, nvidia/mit-b2 ImageNet encoder, stock all-MLP decoder (1 logit at 1/4 res, bilinear upsample), 1-ch robust median/MAD+asinh norm, 1x1 conv 1->3 ch adapter, focal+dice; flip-TTA, thr 0.999 picked on val",
+   "peak_f1": 0.8222861328919878,
+   "peak_precision": 0.8309206558096178,
+   "peak_recall": 0.8138292158968851,
+   "pixel_iou": 0.27138010052287087,
+   "pixel_f1": 0.42690632079464264,
+   "n_test_images": 1529,
+   "peak_tol_px": 3.0,
+   "threshold": 0.999,
+   "train_gpus": 1,
+   "train_wallclock_min": 92.2,
+   "upstream": [
+    "https://huggingface.co/nvidia/mit-b2",
+    "https://github.com/huggingface/transformers"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h3/seg_b2_a/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h3/seg_b2_a/eval_test.log"
   }
  ]
 }
