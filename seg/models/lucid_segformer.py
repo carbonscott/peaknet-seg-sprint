@@ -30,6 +30,8 @@ DEFAULTS = dict(
     prior=0.01,                        # initial peak probability (bias init)
     norm_eps=1.0,
     sat=60000.0,                       # pixels >= sat are saturated/flagged (65535 lines at panel edges) -> 0
+    norm="per_image",                  # per_image: log1p + per-image standardisation (lseg_a/b)
+                                       # pointwise: seg.infer.norm_log (keeps absolute brightness; tiles == crops)
 )
 
 
@@ -76,7 +78,11 @@ class LucidSegformerPeak(nn.Module):
             x = x[:, None]
         H, W = x.shape[-2:]
         ph, pw = (-H) % 32, (-W) % 32
-        x = normalize(x, self.c["norm_eps"], self.c["sat"])
+        if self.c["norm"] == "pointwise":
+            from seg.infer import norm_log
+            x = norm_log(x.float(), sat=self.c["sat"])
+        else:
+            x = normalize(x, self.c["norm_eps"], self.c["sat"])
         if ph or pw:
             x = F.pad(x, (0, pw, 0, ph))
         y = self.shuffle(self.seg(x))                  # (B,1,Hp,Wp) logits
