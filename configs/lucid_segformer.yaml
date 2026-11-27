@@ -1,4 +1,6 @@
 # lucidrains segformer-pytorch, trained from scratch, 1-channel input, PixelShuffle(4) full-res head.
+# round 2 (lseg_d) = this file + --init-ckpt lseg_b best.pt --set model.norm=pointwise train.lr=3e-4
+#   train.warmup=200 loss.pos_weight=5.0 train.thresholds=[...,0.9995]
 model:
   dims: [32, 64, 160, 256]
   heads: [1, 2, 5, 8]
