@@ -12,7 +12,7 @@ D=/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint
 RUN=$PK/runs/$AG/$EXP
 TAG=${EVAL_TAG:-test}
 CFG=${EVAL_CFG:-configs/$M.yaml}
-VAL_THRS=${VAL_THRS:-0.5,0.7,0.8,0.85,0.9,0.92,0.94,0.95,0.96,0.97,0.98,0.985,0.99,0.993,0.995,0.997,0.998,0.999}
+VAL_THRS=${VAL_THRS:-0.5,0.8,0.9,0.95,0.97,0.98,0.99,0.995,0.998,0.999}
 CK=$D/checkpoints/$AG/$EXP; EV=$D/evals/$AG/$EXP
 mkdir -p $CK $D/logs/$AG/$EXP $EV $D/figures/$AG/$EXP/$TAG
 cp $RUN/train.log $RUN/metrics.jsonl $D/logs/$AG/$EXP/
