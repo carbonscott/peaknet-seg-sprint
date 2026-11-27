@@ -27,5 +27,5 @@ python -m seg.evaluate_ensemble \
   --member smp_unet:$C/smp_r34_a/best.pt --member smp_unet:$C/smp_r34_a/last.pt \
   --member smp_unet:$C/smp_upp34_a/best.pt --member smp_unet:$C/smp_upp34_a/last.pt \
   --subsets '0;1;2;3;0,2;1,3;0,3;1,2;0,1,2,3' --tta --val-images 300 --procs 3 --workers 3 \
-  --save-overlays $F --n-overlays 4 --out $E/test.json" > $E/eval.log 2>&1
+  --save-overlays $F --n-overlays 4 --save-probs $PK/runs/h7/final/test_probs_$TAG --out $E/test.json" > $E/eval.log 2>&1
 echo "$(date) eval done rc=$?"

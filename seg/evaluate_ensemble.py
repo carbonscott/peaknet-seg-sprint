@@ -62,7 +62,8 @@ def ens_prob(members, weights, img, tta, tile, mask_saturated=None):
     return (acc / sum(weights))[0, 0].float().cpu().numpy()
 
 
-def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0, ms=None):
+def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0, ms=None,
+        save_probs=None):
     acc = Accumulator(thrs)
     t0 = time.time()
     for i, it in enumerate(loader):
@@ -71,6 +72,10 @@ def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, ov
         tb = np.asarray(it["label"]) == peak_label
         prob = ens_prob(members, weights, img, tta, tile, ms)
         acc.add_prob(prob, tb)
+        if save_probs:
+            meta = it["meta"]
+            np.save(os.path.join(save_probs, "%s__%d.npy" % (meta.get("store", "img"), int(meta.get("index", i)))),
+                    prob.astype(np.float16))
         if overlays is not None and len(overlays) < n_overlays and i % 97 == 0:
             overlays.append((img, tb, prob, it["meta"]))
         if (i + 1) % log_every == 0:
@@ -136,6 +141,7 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--save-overlays", default=None)
+    ap.add_argument("--save-probs", default=None, help="dir: float16 <store>__<idx>.npy prob maps of the test pass")
     ap.add_argument("--n-overlays", type=int, default=4)
     ap.add_argument("--subsets", default=None,
                     help='choose the member subset on VAL too, e.g. "0;1;0,1;0,1,2,3" (indices into --member); '
@@ -193,11 +199,14 @@ def main(argv=None):
                                                                      time.time() - t0), file=sys.stderr, flush=True)
     else:
         thr = a.thr
+    if a.save_probs:
+        os.makedirs(a.save_probs, exist_ok=True)
+        out["save_probs"] = a.save_probs
     stores = split[a.split]
     idxs = list(range(a.limit)) if a.limit else None
     ovl = [] if a.save_overlays else None
     tacc = run(members, weights, make_loader(stores, idxs, a.workers), [thr], peak_label, a.tta, a.tile,
-               overlays=ovl, n_overlays=a.n_overlays, ms=a.mask_saturated)
+               overlays=ovl, n_overlays=a.n_overlays, ms=a.mask_saturated, save_probs=a.save_probs)
     res = tacc.result(thr)
     out.update({"split": a.split, "n_images": tacc.n, "peak_tol_px": tacc.tol, "threshold": thr,
                 "threshold_from": "val" if (a.thr is None or a.subsets) else "given", "pixel": res["pixel"], "peak": res["peak"],
