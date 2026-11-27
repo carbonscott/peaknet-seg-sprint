@@ -1,4 +1,4 @@
-# round 2 (upn_ft): fine-tune of upn_a with saturated-pixel zeroing, lower lr, fewer peak-centred crops
+# round 2 (upn_ft): fine-tune of upn_a best.pt with saturated-pixel zeroing, lower lr, fewer peak-centred crops, focal alpha .5 (less positive bias)
 # hf_upernet: transformers UperNetForSemanticSegmentation, ConvNeXt backbone (openmmlab/upernet-convnext-*)
 model:
   name: hf_upernet
@@ -29,7 +29,7 @@ train:
   thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998, 0.999]
 loss:
   type: focal_dice
-  focal_alpha: 0.75
+  focal_alpha: 0.5
   focal_gamma: 2.0
   w_main: 10.0
   w_dice: 1.0
