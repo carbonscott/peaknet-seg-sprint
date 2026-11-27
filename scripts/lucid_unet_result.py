@@ -48,7 +48,7 @@ r = {
              "peak": {k: t["peak"][k] for k in ("f1", "precision", "recall")},
              "counts": {"peak_tp": t["peak"].get("tp"), "peak_fp": t["peak"].get("fp"), "peak_fn": t["peak"].get("fn")},
              "tile": t.get("tile"), "tta": t.get("tta"),
-             "eval_cmd": "python -m seg.evaluate " + " ".join(t["argv"]) if isinstance(t.get("argv"), list) else str(t.get("argv")),
+             "eval_cmd": "cd $PK/work/h6 && python -m seg.evaluate " + " ".join(t["argv"][1:]) if isinstance(t.get("argv"), list) else str(t.get("argv")),
              "remote_log": "%s/evals/h6/%s/eval.log" % (DUR, exp),
              "metrics_json": "%s/evals/h6/%s/test_metrics.json" % (DUR, exp)},
     "proof": proofs,
