@@ -1,0 +1,32 @@
+# hf_segformer variant: mit-b2 + PixelShuffle(4) full-res head, wider threshold sweep.
+model:
+  name: hf_segformer
+  pretrained: nvidia/mit-b2
+  first_stride: 4      # 4 = stock (decoder at 1/4 res); 2 = decoder at 1/2 res
+  pad_to: 32
+  enc_lr_mult: 0.25    # pretrained encoder LR = train.lr * this
+  head: pixelshuffle   # full-res logits via PixelShuffle(4) of a 16-ch classifier
+  prior_bias: -4.6
+train:
+  crop: 512
+  batch_size: 16
+  crops_per_image: 8
+  pos_frac: 0.7
+  lr: 3.0e-4
+  weight_decay: 0.01
+  max_steps: 20000
+  warmup: 300
+  val_every: 1500
+  val_images: 200
+  num_workers: 4
+  thresholds: [0.3, 0.5, 0.7, 0.8, 0.85, 0.9, 0.93, 0.95, 0.97, 0.98, 0.99]
+  amp: true
+  grad_clip: 1.0
+  gain_jitter: 0.2
+  rot90: true
+loss:
+  type: focal_dice
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  w_main: 1.0
+  w_dice: 1.0

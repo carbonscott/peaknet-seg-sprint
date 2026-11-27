@@ -27,7 +27,8 @@ def robust_norm(x, clip=(-10.0, 1e4)):
 
 
 class HFSegformerPeak(nn.Module):
-    def __init__(self, pretrained="nvidia/mit-b2", first_stride=4, pad_to=32, drop_path=None, enc_lr_mult=0.25):
+    def __init__(self, pretrained="nvidia/mit-b2", first_stride=4, pad_to=32, drop_path=None, enc_lr_mult=0.25,
+                 head="upsample", prior_bias=None):
         super().__init__()
         from transformers import SegformerConfig, SegformerForSemanticSegmentation
         kw = dict(num_labels=1, ignore_mismatched_sizes=True)
@@ -39,6 +40,18 @@ class HFSegformerPeak(nn.Module):
         if drop_path is not None:
             kw["drop_path_rate"] = float(drop_path)
         self.net = SegformerForSemanticSegmentation.from_pretrained(pretrained, **kw)
+        # head: "upsample" = stock 1-logit classifier at 1/stride res, bilinearly upsampled;
+        #       "pixelshuffle" = classifier emits r*r logits per low-res pixel -> PixelShuffle(r) = full res
+        self.head = head
+        self.ps = None
+        if head == "pixelshuffle":
+            r = int(first_stride)
+            old = self.net.decode_head.classifier
+            self.net.decode_head.classifier = nn.Conv2d(old.in_channels, r * r, kernel_size=1)
+            self.ps = nn.PixelShuffle(r)
+        if prior_bias is not None:
+            with torch.no_grad():
+                self.net.decode_head.classifier.bias.fill_(float(prior_bias))
         self.adapter = nn.Conv2d(1, 3, kernel_size=1)
         with torch.no_grad():
             self.adapter.weight.fill_(1.0)
@@ -62,8 +75,11 @@ class HFSegformerPeak(nn.Module):
         pw = (-W) % self.pad_to
         if ph or pw:
             z = F.pad(z, (0, pw, 0, ph), value=0.0)
-        out = self.net(pixel_values=self.adapter(z)).logits  # (B,1,h/4,w/4)
-        out = F.interpolate(out, size=z.shape[-2:], mode="bilinear", align_corners=False)
+        out = self.net(pixel_values=self.adapter(z)).logits  # (B,1 or r*r,h/4,w/4)
+        if self.ps is not None:
+            out = self.ps(out)
+        if out.shape[-2:] != z.shape[-2:]:
+            out = F.interpolate(out, size=z.shape[-2:], mode="bilinear", align_corners=False)
         return out[..., :H, :W]
 
 
@@ -73,4 +89,6 @@ def build_model(cfg):
                            first_stride=m.get("first_stride", 4),
                            pad_to=m.get("pad_to", 32),
                            drop_path=m.get("drop_path"),
-                           enc_lr_mult=m.get("enc_lr_mult", 0.25))
+                           enc_lr_mult=m.get("enc_lr_mult", 0.25),
+                           head=m.get("head", "upsample"),
+                           prior_bias=m.get("prior_bias"))
