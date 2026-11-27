@@ -1,6 +1,6 @@
 {
  "statement": "lucid_segformer",
- "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + pointwise norm_log, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 5)+dice; fine-tuned from lseg_b",
+ "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + pointwise norm_log, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 5)+dice; fine-tuned from lseg_b; flip TTA at test",
  "upstream": [
   {
    "url": "https://github.com/lucidrains/segformer-pytorch",
@@ -29,42 +29,49 @@
   "split": "test",
   "n_images": 1529,
   "peak_tol_px": 3.0,
-  "threshold": 0.998,
-  "threshold_from": "val sweep (--val-thr)",
-  "tta": false,
+  "threshold": 0.98,
+  "threshold_from": "val sweep (--val-thr) with flip TTA, every 4th val image",
+  "tta": true,
   "tile": 1024,
   "pixel": {
-   "iou": 0.4670746811214232,
-   "f1": 0.636742883142655,
-   "precision": 0.8377618140903583,
-   "recall": 0.5135240284716389
+   "iou": 0.48964490009348904,
+   "f1": 0.6573981491330709,
+   "precision": 0.8248515181848515,
+   "recall": 0.5464609399177682
   },
   "peak": {
-   "f1": 0.8965749607993054,
-   "precision": 0.8664061912991209,
-   "recall": 0.9289205155746509
+   "f1": 0.8998073719283632,
+   "precision": 0.8730804202869267,
+   "recall": 0.9282223415682063
   },
   "counts": {
    "peak": {
-    "tp": 34593,
-    "fp": 5334,
-    "fn": 2647
+    "tp": 34567,
+    "fp": 5025,
+    "fn": 2673
    },
    "pixel": {
-    "tp": 58077,
-    "fp": 11247,
-    "fn": 55018
+    "tp": 61802,
+    "fp": 13123,
+    "fn": 51293
    }
   },
-  "eval_cmd": "python -m seg.evaluate --model lucid_segformer --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_d/best.pt --split test --out .../evals/h5/lseg_d/metrics.json --save-overlays .../figures/h5/lseg_d --n-overlays 6 --tile 1024 --workers 4 --val-every 2 --val-thr 0.7,0.9,0.95,0.98,0.99,0.995,0.998,0.999,0.9995,0.9998,0.9999 (via scripts/lucid_finish.sh, same srun step as training)",
-  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d/eval.log",
-  "remote_metrics": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d/metrics.json"
+  "eval_cmd": "python -m seg.evaluate --model lucid_segformer --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_d/best.pt --split test --tta --tile 1024 --workers 4 --val-every 4 --val-thr 0.5,0.7,0.9,0.95,0.98,0.99,0.995,0.998,0.999,0.9995 --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d_tta/metrics.json --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h5/lseg_d_tta --n-overlays 4 (srun step 47394816.94)",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d_tta/eval.log",
+  "remote_metrics": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d_tta/metrics.json",
+  "no_tta_same_ckpt": {
+   "peak_f1": 0.8965749607993054,
+   "pixel_iou": 0.4670746811214232,
+   "threshold": 0.998,
+   "remote_metrics": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_d/metrics.json"
+  }
  },
  "proof": [
-  "results/lucid_segformer/lseg_d_overlay_test_r0309_0007_11.png",
-  "results/lucid_segformer/lseg_d_overlay_test_r0309_0002_17.png"
+  "results/lucid_segformer/lseg_d_tta_overlay_test_r0309_0007_11.png",
+  "results/lucid_segformer/lseg_d_tta_overlay_test_r0309_0004_34.png",
+  "results/lucid_segformer/lseg_d_overlay_test_r0309_0007_11.png"
  ],
- "notes": "Run lseg_d (round 2): seg.train --init-ckpt lseg_b best.pt (step 6000), --set model.norm=pointwise train.lr=3e-4 train.warmup=200 loss.pos_weight=5.0, 64.7 min on 1 L40S (sdfada013 idx3), 10238 steps; best.pt = step 9000 (val F1 0.898 on 200 val imgs, thr 0.995). Total training incl. lseg_b init: 71.3 + 64.7 min. Test threshold 0.998 picked on VAL (every 2nd val image, val peak F1 0.904); whole test 1529 imgs, tiled 1024, no TTA. Round 1 (lseg_b, per-image standardisation, landed earlier): test peak F1 0.8255, pixel IoU 0.410. What helped: (1) PixelShuffle(4) full-res head (Segformer decodes at 1/4 res, peaks are 1-2 px); (2) zeroing saturated >=60000 pixels (lseg_a val P 0.10 from 65535 panel-edge lines); (3) pointwise norm_log instead of per-image standardisation, which keeps absolute brightness (val F1 .809 -> .898). Dead end: BCE pos_weight 10 -> 2 alone (lseg_c) did not fix precision.",
+ "notes": "Run lseg_d (round 2): seg.train --init-ckpt lseg_b best.pt (step 6000), --set model.norm=pointwise train.lr=3e-4 train.warmup=200 loss.pos_weight=5.0, 64.7 min on 1 L40S (sdfada013 idx3), 10238 steps; best.pt = step 9000 (val F1 0.898 on 200 val imgs, thr 0.995). Total training incl. lseg_b init: 71.3 + 64.7 min. Test threshold 0.998 picked on VAL (every 2nd val image, val peak F1 0.904); Reported eval: same lseg_d best.pt with flip TTA (mean of 4 flips), threshold 0.98 picked on VAL with TTA (every 4th val image, val F1 0.907); whole test 1529 imgs, tiled 1024: peak F1 0.8998. Without TTA (thr .998 from val, val F1 .904): test peak F1 0.8966 (kept under eval.no_tta_same_ckpt). Round 1 (lseg_b, per-image standardisation, landed earlier): test peak F1 0.8255, pixel IoU 0.410. What helped: (1) PixelShuffle(4) full-res head (Segformer decodes at 1/4 res, peaks are 1-2 px); (2) zeroing saturated >=60000 pixels (lseg_a val P 0.10 from 65535 panel-edge lines); (3) pointwise norm_log instead of per-image standardisation, which keeps absolute brightness (val F1 .809 -> .898). Dead end: BCE pos_weight 10 -> 2 alone (lseg_c) did not fix precision.",
  "remote_train_and_eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h5/lseg_d/train_and_eval_step.log",
  "init_from": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_b/best.pt"
 }
