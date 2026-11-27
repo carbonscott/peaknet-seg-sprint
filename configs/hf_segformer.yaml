@@ -1,0 +1,6 @@
+# Hugging Face SegFormer (nvidia/mit-b2) for 1-class Bragg-peak segmentation.
+model:
+  name: hf_segformer
+  pretrained: nvidia/mit-b2
+  first_stride: 4      # 4 = stock (decoder at 1/4 res); 2 = decoder at 1/2 res
+  pad_to: 32
