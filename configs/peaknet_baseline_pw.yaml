@@ -1,0 +1,44 @@
+# peaknet_baseline round 2: same as configs/peaknet_baseline.yaml but pointwise input norm (fine-tune from pk_b)
+# Architecture = peaknet/train/hydra_config/train_config/base.yaml defaults (from scratch, as upstream).
+model:
+  name: peaknet_baseline
+  patch_size: 4          # 2 = stem stride 2, logits at 1/2 res (4x compute)
+  hidden_sizes: [96, 192, 384, 768]
+  depths: [3, 3, 9, 3]
+  drop_path_rate: 0.0
+  bifpn_features: 256
+  bifpn_blocks: 1
+  bifpn_base_level: 4
+  head_channels: 256
+  head_groups: 32
+  uses_learned_upsample: false
+  norm: pointwise        # seg.infer.norm_log (h5 note 120: per-image std hurts precision)
+  clip_max: 65000.0
+  sat_zero: 60000.0      # saturated pixels -> 0 (h5 note 74: 65535 runs cause false peaks)
+  pad_multiple: 32
+# seg/train.py keys. Upstream PeakNet (base.yaml): AdamW lr 1.5e-4, wd 0.05, clip 1.0, focal alpha [0.25,0.75] gamma 2.
+# Here: lr 3e-4 for a short from-scratch run; focal (alpha 0.75 on peaks) x10 + dice.
+train:
+  crop: 512
+  batch_size: 16
+  crops_per_image: 4
+  pos_frac: 0.8
+  lr: 3.0e-4
+  weight_decay: 0.05
+  warmup: 300
+  grad_clip: 1.0
+  amp: true
+  num_workers: 8
+  val_every: 1000
+  val_images: 200
+  thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998]
+loss:
+  type: focal_dice
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0
+# seg.evaluate: with no --thr/--val-thr, sweep these on val (every 2nd image) and report test at the best
+eval:
+  val_thr: [0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998, 0.999, 0.9995]
+  val_every: 2
