@@ -1,0 +1,67 @@
+{
+ "statement": "leaderboard",
+ "metric": "test peak F1 at 3 px tolerance (eval.peak.f1); pixel IoU second",
+ "source": "copied from results/<statement>/result.json on main by scripts/make_leaderboard.py",
+ "entries": [
+  {
+   "statement": "best_model",
+   "model": "segmentation-models-pytorch Unet (ResNet34 ImageNet encoder, full-res decoder), 1-ch input, pointwise log norm, focal x10 + dice; snapshot at step 6000 of run smp_r34_a; threshold 0.97 picked on val",
+   "peak_f1": 0.906115050381191,
+   "peak_precision": 0.8995448290462581,
+   "peak_recall": 0.912781954887218,
+   "pixel_iou": 0.5088215410490213,
+   "pixel_f1": 0.6744621907972745,
+   "n_test_images": 1529,
+   "peak_tol_px": 3,
+   "threshold": 0.97,
+   "train_gpus": 1,
+   "train_wallclock_min": 24,
+   "upstream": [
+    "https://github.com/qubvel-org/segmentation_models.pytorch",
+    "https://huggingface.co/smp-hub/resnet34.imagenet",
+    "https://github.com/pytorch/pytorch"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h7/smp_r34_a/snap1.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log"
+  },
+  {
+   "statement": "lucid_segformer",
+   "model": "lucidrains segformer-pytorch Segformer (MiT-b0-like dims 32/64/160/256, from scratch), 1-ch input, saturated-pixel zeroing + log1p/per-image standardisation, PixelShuffle(4) full-res head + residual conv refine, BCE(pos_weight 10)+dice",
+   "peak_f1": 0.8255482639918518,
+   "peak_precision": 0.7939885425191578,
+   "peak_recall": 0.8597207303974221,
+   "pixel_iou": 0.4099673068759821,
+   "pixel_f1": 0.5815273941128933,
+   "n_test_images": 1529,
+   "peak_tol_px": 3.0,
+   "threshold": 0.7,
+   "train_gpus": 1,
+   "train_wallclock_min": 71.3,
+   "upstream": [
+    "https://github.com/lucidrains/segformer-pytorch"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h5/lseg_b/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h5/lseg_b/eval.log"
+  },
+  {
+   "statement": "peaknet_baseline",
+   "model": "PeakNet (carbonscott/peaknet ConvNeXtV2-tiny-like [96..768]x[3,3,9,3] + BiFPN 256 + seg head), from scratch, 1 binary logit, log1p+std norm, saturated pixels zeroed",
+   "peak_f1": 0.8054159033622126,
+   "peak_precision": 0.8268148525211391,
+   "peak_recall": 0.7850966702470462,
+   "pixel_iou": 0.2232677339745618,
+   "pixel_f1": 0.3650349433302468,
+   "n_test_images": 1529,
+   "peak_tol_px": 3,
+   "threshold": 0.999,
+   "train_gpus": 1,
+   "train_wallclock_min": 55.39,
+   "upstream": [
+    "https://github.com/carbonscott/peaknet",
+    "https://github.com/huggingface/transformers"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h2/pk_b/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h2/pk_b/eval.log"
+  }
+ ]
+}
