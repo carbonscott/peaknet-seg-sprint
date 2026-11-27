@@ -1,12 +1,17 @@
 {
  "cluster": "SLAC S3DF, ada partition, NVIDIA L40S, node sdfada013",
- "jobs": ["47394816 (pkseg-n2)"],
+ "jobs": [
+  "47394816 (pkseg-n2)"
+ ],
  "findings": [
   "01:20-01:33 PST: every first training attempt died at the first convolution with CUDNN_STATUS_NOT_INITIALIZED. Cause: CUDA-13 wheels in the shared venv had overwritten torch's cu12 cuDNN/NCCL/cuSPARSELt (not GPU hardware). Fixed by reinstalling the cu12 pins (h1, log runs/h1/envfix/uv.log); runs relaunched 01:34-01:38. The FAILED/CANCELLED steps in the sacct capture are these attempts.",
-  "Labelled peaks are tiny (median 1-2 px, 4-35 peaks per 1920x1920 image; positive pixel fraction about 1e-6 to 1e-5). Models therefore use full-resolution heads (PixelShuffle or full-res decoders) and peak-centred training crops."
+  "Labelled peaks are tiny (median 1-2 px, 4-35 peaks per 1920x1920 image; positive pixel fraction about 1e-6 to 1e-5). Models therefore use full-resolution heads (PixelShuffle or full-res decoders) and peak-centred training crops.",
+  "Detection (RT-DETRv2-r18, boxes derived from the masks): whole-test mAP50 0.583. Validation AP50 peaked at iteration 400 (0.584 on 120 val images) and collapsed afterwards (0.073 at 800, 0.016 at 1200) while training losses stayed flat, so the val-selected iteration-400 checkpoint is reported; a lower-LR + EMA retry was stopped to give its GPU to the best_model ensemble. Many detection false positives are true peaks whose predicted box is smaller than the 3-px-padded label box (IoU < 0.5).",
+  "h7 (best_model): false positives of the best segmentation model on test overlays look like bright spots indistinguishable from labelled peaks, i.e. likely unlabelled real peaks; precision may be capped by label completeness (Not verified)."
  ],
  "not_covered": [
-  "This version of the page was built while the first training runs were still in progress; per-model test results, overlays and the independent re-evaluation are added as each model statement lands on main."
+  "Independent re-evaluation of the final best_model: pending saved test probability maps from the final ensemble pass (scripts/independent_reeval.py is ready).",
+  "Model statements without a result on main are listed as NOT RUN; this page is rebuilt as they land."
  ],
  "commands": [
   "# evidence figures (S3DF, repo root, shared venv)\npython scripts/proof_collect.py --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/proof --jobs 47394816 --live NAME=metrics.jsonl ... --logs NAME=train.log ...",
