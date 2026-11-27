@@ -12,6 +12,7 @@ Team goal and rules: STATEMENTS.md and OPERATIONS.md.
 | 3 | `peaknet_baseline` | PeakNet (carbonscott/peaknet: ConvNeXtV2 [96..768]x[3,3,9,3] + BiFPN 256 + seg head), trained from scratch, 1 binary logit, saturated pixels zeroed, pointwise log input norm | 0.8949 | 0.8939 | 0.8959 | 0.3071 | 1529 |
 | 4 | `hf_upernet` | UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch adapter (saturated px zeroed, log1p, per-image std), PixelShuffle(4) full-res head, focal+dice; fine-tuned (upn_ft) from upn_a, flip-TTA | 0.8912 | 0.8814 | 0.9012 | 0.4657 | 1529 |
 | 5 | `lucid_unet` | lucidrains x-unet XUnet 2D (dim 32, mults [1, 2, 4, 8], attn at 1/8 + mid), 1-ch asinh adapter, full-res head, focal_dice loss | 0.8876 | 0.8972 | 0.8782 | 0.5186 | 1529 |
+| 6 | `hf_segformer` | Hugging Face SegformerForSemanticSegmentation, nvidia/mit-b2 ImageNet encoder, stock all-MLP decoder (1 logit at 1/4 res, bilinear upsample), 1-ch robust median/MAD+asinh norm, 1x1 conv 1->3 ch adapter, focal+dice; flip-TTA, thr 0.999 picked on val | 0.8223 | 0.8309 | 0.8138 | 0.2714 | 1529 |
 
 Rebuilt by `python scripts/make_leaderboard.py` from each model's `results/<statement>/result.json`. Whole test split, peak tolerance 3 px.
 <!-- leaderboard:end -->

@@ -140,3 +140,21 @@ One short dated entry per finding (PST).
   pos_frac .5): its step-1000 checkpoint + flip-TTA at thr .9999 won on the same 400 val images (.898 vs .8925), and gave
   whole-test peak F1 0.8912 (P .881, R .901). The fine-tune drifted to over-confidence again after step 1000.
   Not tried for lack of time: the pointwise log normalisation that helped PeakNet and lucid models (h2, h5).
+
+
+
+## hf_segformer (h3, crew B-hf), 2026-11-27 PST
+
+- 01:30 Peaks are 1-2 px with 4-35 per image. HF SegFormer (`nvidia/mit-b2`) wrapper: per-image robust norm
+  ((x - median) / 1.4826 MAD, then asinh), learnable 1x1 conv 1->3 ch (init = replicate), pad to /32, stock 1-class
+  head at 1/4 res upsampled bilinearly. Encoder LR = 0.25x head LR (`param_groups` hook for seg.train).
+- 01:35 `CUDNN_STATUS_NOT_INITIALIZED` on every GPU was the shared venv (cu13 wheels over torch's cu12 cuDNN; h1
+  fixed it). Disabling cuDNN (`scripts/run_nocudnn.py`) also worked, but is no longer needed.
+- 02:05 Dead end: a PixelShuffle(4) full-res head on SegFormer (which helped UperNet) did worse at step 1500
+  (val F1 .66, P .50 even at thr .99). FP diagnosis (`scripts/fp_diag.py`, b2 step 1000, 8 val imgs): 0/55 false
+  peaks lie within 6 px of a true peak (they are not fragments); 20/55 are 1-px blobs; raw z-score at FPs is
+  ~2.6-6.7, i.e. faint unlabeled spots. Precision comes from the threshold, not post-processing.
+- 03:33 With focal(alpha .25)+dice, the in-run val F1 (thr capped at .9) swung .68-.84; the true optimum is
+  thr .999. Val grid on 400 imgs: best.pt (step 4000) .857 plain, .867 with flip-TTA (no gain from saturated
+  masking); last.pt (step 10001) only .812. A mit-b3 + focal(alpha .75)x10 + dice run (bs 8) peaked at .854
+  (thr .98, step 3000) and was stopped to free the GPU for the test eval.
