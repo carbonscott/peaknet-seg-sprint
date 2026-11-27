@@ -55,6 +55,15 @@ class HFUperNetPeak(nn.Module):
             # keep 4x4 kernel; pad so output = ceil(H/st)
             pe.padding = ((4 - st) // 2, (4 - st) // 2) if st < 4 else (0, 0)
 
+    def train(self, mode=True):
+        # UperNet's pyramid-pooling module ends in BatchNorm after a 1x1 adaptive pool, which fails
+        # with batch size 1 in training; keep those BN layers on their pretrained running stats.
+        super().train(mode)
+        for mod in self.net.decode_head.psp_modules.modules():
+            if isinstance(mod, nn.modules.batchnorm._BatchNorm):
+                mod.eval()
+        return self
+
     def forward(self, x):
         if x.dim() == 3:
             x = x[:, None]
