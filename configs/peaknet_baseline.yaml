@@ -15,11 +15,24 @@ model:
   norm: log1p_std        # or "instance" (upstream InstanceNorm on raw ADU)
   clip_max: 65000.0
   pad_multiple: 32
-# upstream optimiser settings (base.yaml): AdamW lr 1.5e-4, wd 0.05, betas (0.9, 0.95), grad clip 1.0,
-# focal loss alpha [0.25, 0.75] gamma 2
+# seg/train.py keys. Upstream PeakNet (base.yaml): AdamW lr 1.5e-4, wd 0.05, clip 1.0, focal alpha [0.25,0.75] gamma 2.
+# Here: lr 3e-4 for a short from-scratch run; focal (alpha 0.75 on peaks) x10 + dice.
 train:
-  lr: 1.5e-4
-  weight_decay: 0.05
-  betas: [0.9, 0.95]
-  grad_clip: 1.0
   crop: 512
+  batch_size: 16
+  crops_per_image: 4
+  pos_frac: 0.8
+  lr: 3.0e-4
+  weight_decay: 0.05
+  warmup: 300
+  grad_clip: 1.0
+  amp: true
+  num_workers: 8
+  val_every: 1000
+  val_images: 200
+loss:
+  type: focal_dice
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0
