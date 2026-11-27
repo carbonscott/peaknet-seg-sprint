@@ -31,7 +31,7 @@ def main(argv=None):
     ap.add_argument("--title", default="training curves")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8.5), sharex=True)
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
     summary = []
     for k, spec in enumerate(a.run):
@@ -59,10 +59,11 @@ def main(argv=None):
     ax1.legend(fontsize=9)
     ax2.set_ylabel("val peak metric (tol 3 px)\nsolid F1, dashed P, dotted R")
     ax2.set_xlabel("optimizer step")
-    ax2.set_ylim(0, 1.02)
+    lo = min([e["peak_f1"] for spec in a.run for e in read(spec.split("|")[0])[1]] or [0])
+    ax2.set_ylim(max(0.0, min(0.5, lo - 0.1)), 1.02)
     ax2.grid(alpha=.3)
     ax2.legend(fontsize=9, loc="lower right")
-    fig.suptitle(a.title + "\n" + " | ".join(summary), fontsize=10)
+    fig.suptitle(a.title + "\n" + "\n".join(summary), fontsize=10)
     fig.tight_layout()
     fig.savefig(a.out, dpi=110)
     print("\n".join(summary))
