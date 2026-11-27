@@ -344,7 +344,7 @@ def main(argv=None):
 
     if args.preds:
         import os
-        info = {"ckpt_thr": None}
+        info = {"ckpt_thr": None, "cfg": _load_yaml(args.config)}
 
         def predict(img, meta):
             return np.load(os.path.join(args.preds, "%s__%d.npy" % (meta["store"], int(meta["index"])))).astype(np.float32)
@@ -358,6 +358,11 @@ def main(argv=None):
 
     thrs = _parse_thr(args.thr)
     val_info = None
+    ecfg = (info.get("cfg") or {}).get("eval") or {}
+    if not args.val_thr and not args.thr and ecfg.get("val_thr"):  # config default: eval: {val_thr: [...]}
+        v = ecfg["val_thr"]
+        args.val_thr = ",".join(str(x) for x in v) if isinstance(v, (list, tuple)) else str(v)
+        args.val_every = int(ecfg.get("val_every", args.val_every))
     if args.val_thr:
         vthrs = _parse_thr(args.val_thr)
         vacc = Accumulator(vthrs, tol=args.tol)
