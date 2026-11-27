@@ -39,4 +39,20 @@ for s in shapes:
     assert y.shape == (s[0], 1, s[2], s[3])
 if dev == "cuda":
     print("peak mem %.2f GB" % (torch.cuda.max_memory_allocated() / 1e9))
+if "--train" in sys.argv and dev == "cuda":
+    m.train()
+    opt = torch.optim.AdamW(m.parameters(), 3e-4)
+    bs = int(next((a.split("=")[1] for a in sys.argv if a.startswith("--bs=")), 8))
+    torch.cuda.reset_peak_memory_stats()
+    x = torch.randn(bs, 1, 512, 512, device=dev) * 50 + 40
+    tgt = (torch.rand(bs, 1, 512, 512, device=dev) < 1e-4).float()
+    for i in range(6):
+        if i == 1:
+            torch.cuda.synchronize(); t = time.time()
+        with torch.autocast(dev, dtype=torch.bfloat16):
+            y = m(x)
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(y.float(), tgt)
+        opt.zero_grad(); loss.backward(); opt.step()
+    torch.cuda.synchronize()
+    print("train bs=%d 512^2: %.3fs/it, peak mem %.2f GB" % (bs, (time.time() - t) / 5, torch.cuda.max_memory_allocated() / 1e9))
 print("SMOKE OK")
