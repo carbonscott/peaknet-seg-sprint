@@ -30,9 +30,17 @@ SPLIT_JSON = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
                           "results", "split", "result.json")
 
 
+REMOTE_MANIFEST = "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h1/split/split.json"
+
+
 def load_split(path=SPLIT_JSON):
-    """Return {"train": [...], "val": [...], "test": [...]} store basenames."""
-    return json.load(open(path))["stores"]
+    """Return {"train": [...], "val": [...], "test": [...]} store basenames.
+    ops/sync_up.sh does not copy results/, so on S3DF a missing results/split/result.json falls back to
+    the durable manifest (same stores)."""
+    for p in (path, SPLIT_JSON, REMOTE_MANIFEST):
+        if p and os.path.isfile(p):
+            return json.load(open(p))["stores"]
+    raise FileNotFoundError(path)
 
 
 def store_path(name, root=DATA_ROOT, stage_dir=STAGE_DIR):
