@@ -8,5 +8,5 @@ while kill -0 $P 2>/dev/null; do sleep 30; done
 mkdir -p $D/evals/$AG/$EXP
 echo "[chain] training PID $P exited at $(date); starting eval" > $D/evals/$AG/$EXP/eval_$TAG.log
 srun --jobid=${JOBID:-47394816} --overlap --ntasks=1 --cpus-per-task=6 --mem=24G --gres=gpu:l40s:10 \
-  bash -c "export CUDA_VISIBLE_DEVICES=$G EVAL_TAG=$TAG; bash scripts/hf_eval_pipeline.sh $AG $M $EXP $*" \
+  bash -c "export CUDA_VISIBLE_DEVICES=$G EVAL_TAG=$TAG EVAL_CFG=${EVAL_CFG:-configs/$M.yaml}; bash scripts/hf_eval_pipeline.sh $AG $M $EXP $*" \
   >> $D/evals/$AG/$EXP/eval_$TAG.log 2>&1
