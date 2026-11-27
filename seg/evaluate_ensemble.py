@@ -51,25 +51,25 @@ def make_loader(stores, idxs=None, workers=6):
     return torch.utils.data.DataLoader(ds, batch_size=1, num_workers=workers, collate_fn=lambda b: b[0])
 
 
-def ens_prob(members, weights, img, tta, tile):
+def ens_prob(members, weights, img, tta, tile, mask_saturated=None):
     import torch
     from seg.infer import predict_prob
     dev = next(members[0]["model"].parameters()).device
     x = torch.as_tensor(img, dtype=torch.float32).reshape(1, 1, *img.shape[-2:]).to(dev)
     acc = 0
     for m, w in zip(members, weights):
-        acc = acc + w * predict_prob(m["model"], x, tile=tile, tta=tta)
+        acc = acc + w * predict_prob(m["model"], x, tile=tile, tta=tta, mask_saturated=mask_saturated)
     return (acc / sum(weights))[0, 0].float().cpu().numpy()
 
 
-def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0):
+def run(members, weights, loader, thrs, peak_label, tta, tile, log_every=100, overlays=None, n_overlays=0, ms=None):
     acc = Accumulator(thrs)
     t0 = time.time()
     for i, it in enumerate(loader):
         img = np.asarray(it["image"], dtype=np.float32)
         img = img[0] if img.ndim == 3 else img
         tb = np.asarray(it["label"]) == peak_label
-        prob = ens_prob(members, weights, img, tta, tile)
+        prob = ens_prob(members, weights, img, tta, tile, ms)
         acc.add_prob(prob, tb)
         if overlays is not None and len(overlays) < n_overlays and i % 97 == 0:
             overlays.append((img, tb, prob, it["meta"]))
@@ -87,6 +87,7 @@ def main(argv=None):
     ap.add_argument("--weights", default=None)
     ap.add_argument("--tta", action="store_true")
     ap.add_argument("--tile", type=int, default=None)
+    ap.add_argument("--mask-saturated", type=int, default=None, help="dilation px for saturated-pixel suppression (0=off; default env PK_MASK_SATURATED)")
     ap.add_argument("--split-json", default="results/split/result.json")
     ap.add_argument("--split", default="test")
     ap.add_argument("--val-images", type=int, default=400, help="val images (evenly spaced) for the thr sweep")
@@ -107,13 +108,13 @@ def main(argv=None):
     assert len(weights) == len(members)
     t0 = time.time()
     out = {"members": [dict(name=m["name"], ckpt=m["ckpt"], ckpt_thr=m["ckpt_thr"]) for m in members],
-           "weights": weights, "tta": a.tta, "tile": a.tile, "argv": sys.argv if argv is None else argv}
+           "weights": weights, "tta": a.tta, "tile": a.tile, "mask_saturated": a.mask_saturated, "argv": sys.argv if argv is None else argv}
 
     if a.thr is None:
         from seg.data import PeakDataset
         nval = len(PeakDataset(split["val"]))
         idxs = np.linspace(0, nval - 1, min(a.val_images, nval)).round().astype(int).tolist()
-        vacc = run(members, weights, make_loader(split["val"], idxs, a.workers), SWEEP, peak_label, a.tta, a.tile)
+        vacc = run(members, weights, make_loader(split["val"], idxs, a.workers), SWEEP, peak_label, a.tta, a.tile, ms=a.mask_saturated)
         thr = vacc.best_threshold()
         out["val"] = {"n_images": vacc.n, "threshold": thr, "sweep": {str(t): vacc.result(t) for t in SWEEP}}
         print("[ensemble] val: best thr %.2f peak F1 %.4f (%.0f s)" % (thr, vacc.result(thr)["peak"]["f1"],
@@ -124,7 +125,7 @@ def main(argv=None):
     idxs = list(range(a.limit)) if a.limit else None
     ovl = [] if a.save_overlays else None
     tacc = run(members, weights, make_loader(stores, idxs, a.workers), [thr], peak_label, a.tta, a.tile,
-               overlays=ovl, n_overlays=a.n_overlays)
+               overlays=ovl, n_overlays=a.n_overlays, ms=a.mask_saturated)
     res = tacc.result(thr)
     out.update({"split": a.split, "n_images": tacc.n, "peak_tol_px": tacc.tol, "threshold": thr,
                 "threshold_from": "val" if a.thr is None else "given", "pixel": res["pixel"], "peak": res["peak"],

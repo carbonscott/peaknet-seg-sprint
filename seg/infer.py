@@ -78,26 +78,58 @@ def predict_logits(model, x, tile=None, overlap=64, amp=True, multiple=32):
     return out / cnt.clamp(min=1)
 
 
+SAT_VALUE = 65535.0
+
+
+def saturated_mask_px():
+    """Default dilation (px) for saturated-pixel suppression: env PK_MASK_SATURATED (unset/0 = off)."""
+    import os
+    try:
+        return int(os.environ.get("PK_MASK_SATURATED", "0") or 0)
+    except ValueError:
+        return 0
+
+
+def suppress_saturated(prob, x, dilate=1, sat=SAT_VALUE):
+    """Zero prob where the raw image x >= sat, with the mask dilated by `dilate` px.
+    prob, x: (B,1,H,W) tensors on the same device. dilate < 0 disables."""
+    if dilate is None or dilate < 0:
+        return prob
+    m = (x >= sat).float()
+    if dilate > 0:
+        m = F.max_pool2d(m, 2 * dilate + 1, stride=1, padding=dilate)
+    return prob * (1 - m)
+
+
 @torch.no_grad()
-def predict_prob(model, x, tile=None, overlap=64, amp=True, tta=False, multiple=32):
+def predict_prob(model, x, tile=None, overlap=64, amp=True, tta=False, multiple=32, mask_saturated=None):
     """x (B,1,H,W) tensor on the model's device -> sigmoid prob (B,1,H,W).
-    tta=True averages probabilities over identity, h-flip, v-flip and hv-flip."""
+    tta=True averages probabilities over identity, h-flip, v-flip and hv-flip.
+    mask_saturated: None -> env PK_MASK_SATURATED (default off); 0/False -> off; int d >= 1 -> zero prob
+    where image >= 65535, mask dilated by d px (True means 1)."""
     if not tta:
-        return torch.sigmoid(predict_logits(model, x, tile, overlap, amp, multiple))
-    acc = 0
-    flips = [(), (-1,), (-2,), (-2, -1)]
-    for d in flips:
-        xi = torch.flip(x, d) if d else x
-        p = torch.sigmoid(predict_logits(model, xi, tile, overlap, amp, multiple))
-        acc = acc + (torch.flip(p, d) if d else p)
-    return acc / len(flips)
+        p = torch.sigmoid(predict_logits(model, x, tile, overlap, amp, multiple))
+    else:
+        acc = 0
+        flips = [(), (-1,), (-2,), (-2, -1)]
+        for d in flips:
+            xi = torch.flip(x, d) if d else x
+            q = torch.sigmoid(predict_logits(model, xi, tile, overlap, amp, multiple))
+            acc = acc + (torch.flip(q, d) if d else q)
+        p = acc / len(flips)
+    ms = saturated_mask_px() if mask_saturated is None else int(mask_saturated)
+    if ms:
+        p = suppress_saturated(p, x, dilate=ms)
+    return p
 
 
 @torch.no_grad()
-def predict_full(model, image, device=None, tile=None, overlap=64, amp=True, tta=False, multiple=32):
-    """One image (H,W) / (1,H,W) numpy or tensor -> np.float32 prob map (H,W). device defaults to the model's."""
+def predict_full(model, image, device=None, tile=None, overlap=64, amp=True, tta=False, multiple=32,
+                 mask_saturated=None):
+    """One image (H,W) / (1,H,W) numpy or tensor -> np.float32 prob map (H,W). device defaults to the model's.
+    mask_saturated: see predict_prob (None -> env PK_MASK_SATURATED, default off)."""
     if device is None:
         device = next(model.parameters()).device
     x = _as_bchw(image).to(device)
-    p = predict_prob(model, x, tile, overlap, amp, tta, multiple)
+    p = predict_prob(model, x, tile, overlap, amp, tta, multiple, mask_saturated)
     return p[0, 0].float().cpu().numpy()
