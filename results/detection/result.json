@@ -1,0 +1,23 @@
+{
+ "statement": "detection",
+ "model": "Hugging Face RT-DETRv2 (PekingU/rtdetr_v2_r18vd, COCO-pretrained, 1-class head) on 256-px crops upscaled 2x; tiled full-image inference",
+ "labels_from": "one box per 8-connected component of label==1 (the peak mask), bounding box padded by 3 px per side (boxes ~7-16 px); no box labels exist in the dataset",
+ "upstream": [
+  {"url": "https://huggingface.co/PekingU/rtdetr_v2_r18vd", "ref": "transformers 4.57.6 RTDetrV2ForObjectDetection"},
+  {"url": "https://github.com/huggingface/transformers", "ref": "4.57.6"}
+ ],
+ "code": ["seg/detection.py", "configs/detection.yaml", "scripts/det_run.sh"],
+ "train": {"slurm_jobid": "47394816.69", "gpus": 1, "wallclock_min": 20, "train_images": 15989,
+           "config": "configs/detection.yaml",
+           "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h8/det_a/train.log",
+           "selected": "it 400 by val AP50 (0.584 on 120 val images, score thr 0.10 picked there); training stopped at it ~1400 because val AP50 collapsed (0.073 @800, 0.016 @1200)"},
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h8/det_a/best.pt",
+ "eval": {"split": "test", "n_images": 1529, "n_gt_boxes": 37240, "iou_thr": 0.5,
+          "map50": 0.5829893417390031, "precision": 0.6711232724879637, "recall": 0.5203007518796993, "f1": 0.5861656910347748,
+          "score_thr": 0.1, "tp": 19376, "fp": 9495, "fn": 17864,
+          "eval_cmd": "python -m seg.detection eval --config configs/detection.yaml --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h8/det_a/best.pt --split test --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h8/det_a/test_metrics.json --fig-dir /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h8/det_a --fig-every 150",
+          "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h8/det_a/test_metrics.json",
+          "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h8/det_a/eval.log"},
+ "proof": ["results/detection/det_test_mfxl1025422_r0309_0015_000.png", "results/detection/det_test_mfxl1027522_r0028_0007_018.png"],
+ "notes": "AP50 is COCO-style (101-point interpolated precision envelope, greedy matching by score at IoU>=0.5, single class), computed in seg/detection.py over the whole test split; precision/recall/F1 at the val-picked score threshold 0.10. Inference: 256-px tiles with 32-px overlap, each upscaled 2x, keep detections whose centre lies in the tile core, then NMS IoU 0.3. Saturated (>=60000) pixels are set to background in the input. Many false positives are correct peaks whose predicted box is smaller than the padded label box (IoU < 0.5), so AP50 understates peak finding. det_a was unstable after warmup (lr 1e-4); a retry det_b (lr 2e-5, EMA 0.999, frozen BN) runs in round 2."
+}

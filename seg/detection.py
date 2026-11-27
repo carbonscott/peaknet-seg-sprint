@@ -34,7 +34,7 @@ DEFAULTS = dict(
     crops_per_image=4, peak_centred=0.75, images_per_batch=4, workers=8,
     lr=1e-4, lr_backbone=1e-5, weight_decay=1e-4, minutes=40, max_iters=100000,
     val_every=400, val_images=120, score_floor=0.05, nms_iou=0.3, max_det_per_tile=100,
-    seed=0, train_limit=None, amp=False, final_val_limit=None,
+    seed=0, train_limit=None, amp=False, final_val_limit=None, ema=0.0, freeze_bn=False, grad_clip=0.1, warmup=200,
 )
 
 
@@ -93,6 +93,7 @@ def normalize(img):
     s = s[s < 60000]
     lo, hi = np.percentile(s, [1, 99.9]) if s.size else (0.0, 1.0)
     hi = max(hi, lo + 1e-3)
+    img = np.where(img >= 60000, lo, img)  # saturated / dead-edge pixels (65535) -> background
     return np.sqrt(np.clip((img - lo) / (hi - lo), 0, 1)).astype(np.float32)
 
 
@@ -406,6 +407,18 @@ def train(a):
                             weight_decay=cfg["weight_decay"])
     dl = torch.utils.data.DataLoader(CropDataset(tr, cfg, True), batch_size=cfg["images_per_batch"], shuffle=True,
                                      num_workers=cfg["workers"], collate_fn=collate, drop_last=True, persistent_workers=True)
+    ema = None
+    if cfg["ema"]:
+        from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
+        ema = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(cfg["ema"]), use_buffers=True)
+        log("EMA of weights, decay %g (evaluated and saved instead of the raw weights)" % cfg["ema"])
+
+    def set_train():
+        model.train()
+        if cfg["freeze_bn"]:  # keep BatchNorm running stats fixed (pretrained COCO stats)
+            for mod in model.modules():
+                if isinstance(mod, torch.nn.modules.batchnorm._BatchNorm):
+                    mod.eval()
     t_start, it, best, ep = time.time(), 0, -1.0, 0
     budget = cfg["minutes"] * 60
     total_iters = min(cfg["max_iters"], 10 ** 9)
@@ -413,33 +426,36 @@ def train(a):
     while not done:
         ep += 1
         for crops in dl:
-            model.train()
+            set_train()
             x, labels = to_model_inputs(crops, cfg, device)
             frac = min(1.0, (time.time() - t_start) / budget)
             for g, base in zip(opt.param_groups, (cfg["lr_backbone"], cfg["lr"])):
-                g["lr"] = base * (min(1.0, (it + 1) / 200)) * (0.5 * (1 + math.cos(math.pi * frac)) * 0.95 + 0.05)
+                g["lr"] = base * (min(1.0, (it + 1) / cfg["warmup"])) * (0.5 * (1 + math.cos(math.pi * frac)) * 0.95 + 0.05)
             with torch.autocast("cuda", dtype=torch.bfloat16, enabled=cfg["amp"] and device == "cuda"):
                 out = model(pixel_values=x, labels=labels)
             loss = out.loss
             opt.zero_grad(set_to_none=True)
             if torch.isfinite(loss):
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["grad_clip"])
                 opt.step()
+                if ema is not None:
+                    ema.update_parameters(model)
             it += 1
             if it % 50 == 0:
                 ld = {k: round(float(v), 3) for k, v in out.loss_dict.items() if "aux" not in k and "dn" not in k}
                 log("ep %d it %d loss %.3f %s lr %.2e elapsed %.1f min" % (ep, it, float(loss), ld, opt.param_groups[1]["lr"], (time.time() - t_start) / 60))
             last = (time.time() - t_start) >= budget or it >= total_iters
             if it % cfg["val_every"] == 0 or last:
-                model.eval()
-                acc = evaluate_items(model, va, cfg, device)
+                evm = ema.module if ema is not None else model
+                evm.eval()
+                acc = evaluate_items(evm, va, cfg, device)
                 ap, thr = acc.ap(), acc.best_threshold()
                 at = acc.at(thr)
                 log("VAL it %d AP50 %.4f best_thr %.3f P %.4f R %.4f F1 %.4f (n_img %d n_gt %d)" % (it, ap, thr, at["precision"], at["recall"], at["f1"], acc.n_img, acc.n_gt))
                 if ap > best:
                     best = ap
-                    torch.save({"model": model.state_dict(), "cfg": cfg, "thr": thr, "it": it, "val_ap50": ap}, os.path.join(a.out, "best.pt"))
+                    torch.save({"model": evm.state_dict(), "cfg": cfg, "thr": thr, "it": it, "val_ap50": ap}, os.path.join(a.out, "best.pt"))
                     log("  saved best.pt (val AP50 %.4f)" % ap)
             if last:
                 done = True

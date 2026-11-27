@@ -11,9 +11,10 @@ workers: 8
 lr: 1.0e-4
 lr_backbone: 1.0e-5
 weight_decay: 1.0e-4
-minutes: 40
+minutes: 45
 val_every: 400
 val_images: 120
 score_floor: 0.05
 nms_iou: 0.3
 amp: false
+final_val_limit: 500
