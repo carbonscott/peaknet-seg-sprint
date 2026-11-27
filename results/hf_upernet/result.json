@@ -1,0 +1,86 @@
+{
+ "statement": "hf_upernet",
+ "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice",
+ "upstream": [
+  {
+   "url": "https://huggingface.co/openmmlab/upernet-convnext-tiny",
+   "ref": "transformers 4.57.6"
+  },
+  {
+   "url": "https://github.com/huggingface/transformers",
+   "ref": "v4.57.6 (UperNetForSemanticSegmentation)"
+  }
+ ],
+ "code": [
+  "seg/models/hf_upernet.py",
+  "configs/hf_upernet.yaml",
+  "seg/train.py",
+  "seg/losses.py",
+  "seg/infer.py",
+  "seg/evaluate.py",
+  "seg/data.py",
+  "scripts/hf_upernet_launch.sh",
+  "scripts/hf_upernet_eval.sh",
+  "scripts/hf_upernet_evalstep.sh"
+ ],
+ "train": {
+  "slurm_jobid": "47394816.41",
+  "gpus": 1,
+  "wallclock_min": 89.84,
+  "train_images": 15989,
+  "config": "configs/hf_upernet.yaml",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h4/upn_a/train.log",
+  "metrics_jsonl": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/logs/h4/upn_a/metrics.jsonl"
+ },
+ "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h4/upn_a/best.pt",
+ "eval": {
+  "split": "test",
+  "n_images": 1529,
+  "peak_tol_px": 3.0,
+  "threshold": 0.5,
+  "pixel": {
+   "iou": 0.4943854846684677,
+   "f1": 0.6616572360218663,
+   "precision": 0.7228351406569228,
+   "recall": 0.6100269684778283
+  },
+  "peak": {
+   "f1": 0.8885877708433766,
+   "precision": 0.8630507959808661,
+   "recall": 0.9156820622986036
+  },
+  "counts": {
+   "peak": {
+    "tp": 34100,
+    "fp": 5411,
+    "fn": 3140
+   },
+   "pixel": {
+    "tp": 68991,
+    "fp": 26454,
+    "fn": 44104
+   }
+  },
+  "eval_cmd": "PK_MASK_SATURATED=0 python -m seg.evaluate --model hf_upernet --config configs/hf_upernet.yaml --ckpt /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h4/upn_a/best.pt --split test --thr 0.5 --tta --out /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/metrics_test.json --save-overlays /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/figures/h4/upn_a/test --n-overlays 6 --workers 6  (slurm step 47394816.80, run by scripts/hf_upernet_evalstep.sh after the val_grid pick)",
+  "remote_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/eval_test.log",
+  "metrics_json": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/metrics_test.json",
+  "threshold_from": "val (scripts/val_grid.py on 400 evenly spaced val images; best.pt/last.pt x flip-TTA x PK_MASK_SATURATED 0/1/2 x thr 0.5..0.9999; /sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/val_pick_test.json, valgrid_test_best.json, valgrid_test_last.json)",
+  "val_pick": {
+   "tta": true,
+   "mask_saturated": 0,
+   "min_size": 0,
+   "thr": 0.5,
+   "peak_f1": 0.892477514309076,
+   "peak_p": 0.8665277364294929,
+   "peak_r": 0.9200295016331261,
+   "pix_iou": 0.611328250144166,
+   "ckpt": "best",
+   "n_val_images": 400
+  }
+ },
+ "proof": [
+  "results/hf_upernet/overlay_test_upn_a_0002_17.png",
+  "results/hf_upernet/overlay_test_upn_a_0009_28.png"
+ ],
+ "notes": "Run upn_a: 1 L40S, 14786 steps (89.8 min, --time-min 90), 512 crops x16/step (4 per decoded image, 70% centred on a peak), AdamW lr 2e-4 (backbone x0.5), cosine, bf16, loss 10*focal(alpha .75, gamma 2)+soft dice, log1p + per-image standardisation, no saturated-pixel handling in training. Checkpoint = in-run best (step 3000; in-run val sweep was capped at thr 0.9). Selection on VAL only: scripts/val_grid.py on 400 evenly spaced val images over {best.pt, last.pt} x flip-TTA x saturated mask (PK_MASK_SATURATED 0/1/2) x thr 0.5..0.9999 -> best.pt + flip-TTA + thr 0.5, val peak F1 0.8925 (no-TTA 0.888 at thr 0.995; saturated mask made no difference -> off). last.pt (end of schedule) was over-confident: val 0.864 even at thr 0.9999 (recall 0.98) - longer training with focal alpha .75 x10 kept pushing positives. Tried: PixelShuffle(4) learnable full-res head instead of bilinear 1/4-res upsampling (used), stem stride 2 (smoke only, 3.7x slower, not trained). Round 2 (upn_ft: fine-tune with saturated-pixel zeroing, focal alpha .5) in progress."
+}

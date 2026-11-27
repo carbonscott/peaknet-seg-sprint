@@ -6,3 +6,28 @@ model:
   aux_head: false
   pad_multiple: 32
   clip_max: 65000.0
+  head: shuffle        # classifier emits 16 ch -> PixelShuffle(4) = learnable full-res logits
+  backbone_lr_mult: 0.5
+train:
+  crop: 512
+  batch_size: 16
+  crops_per_image: 4
+  pos_frac: 0.7
+  lr: 2.0e-4
+  weight_decay: 0.01
+  max_steps: 20000
+  warmup: 300
+  val_every: 1000
+  val_images: 200
+  num_workers: 6
+  amp: true
+  grad_clip: 1.0
+  gain_jitter: 0.2
+  rot90: true
+  thresholds: [0.5, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998, 0.999]
+loss:
+  type: focal_dice
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  w_main: 10.0
+  w_dice: 1.0

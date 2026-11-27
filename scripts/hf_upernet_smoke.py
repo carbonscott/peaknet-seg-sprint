@@ -5,18 +5,19 @@ sys.path.insert(0, ".")
 from seg.models.hf_upernet import build_model
 st = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 crop = int(sys.argv[2]) if len(sys.argv) > 2 else 512
+head = sys.argv[3] if len(sys.argv) > 3 else "bilinear"
 root = "/sdf/data/lcls/ds/prj/prjcwang31/results/proj-peaknet10k/peaknet10k/"
 z = zarr.open(root + "mfxl1025422_r0309_peaknet.0000.zarr", "r")
 im = torch.from_numpy(z["images"][0][:crop, :crop].astype(np.float32))[None, None]
 lb = torch.from_numpy((z["labels"][0][:crop, :crop] == 1).astype(np.float32))[None, None]
-m = build_model({"model": {"stem_stride": st}})
+m = build_model({"model": {"stem_stride": st, "head": head}})
 dev = "cuda" if torch.cuda.is_available() else "cpu"
 m.to(dev).train(); im, lb = im.to(dev), lb.to(dev)
 t = time.time()
 out = m(im)
 loss = torch.nn.functional.binary_cross_entropy_with_logits(out, lb)
 loss.backward()
-print("stride", st, "in", tuple(im.shape), "out", tuple(out.shape), "loss %.4f" % loss.item(),
+print("stride", st, "head", head, "in", tuple(im.shape), "out", tuple(out.shape), "loss %.4f" % loss.item(),
       "params %.1fM" % (sum(p.numel() for p in m.parameters()) / 1e6), "fwd+bwd %.2fs" % (time.time() - t), dev)
 m.eval()
 with torch.no_grad():

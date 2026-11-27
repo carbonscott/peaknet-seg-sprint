@@ -20,11 +20,17 @@ DEFAULTS = {
     "aux_head": False,
     "pad_multiple": 32,
     "clip_max": 65000.0,       # 65535 = saturated/bad pixels; clamp before log
+    "sat_value": None,         # e.g. 60000: zero saturated pixels before log (they cause confident false peaks)
+    "head": "bilinear",        # "bilinear" = stock UperNet upsampling of 1/r logits;
+                               # "shuffle" = classifier emits r*r channels -> PixelShuffle(r) full-res logits
 }
 
 
-def normalize(x, clip_max=65000.0):
-    """(B,1,H,W) raw ADU -> log1p, per-image zero mean / unit std."""
+def normalize(x, clip_max=65000.0, sat_value=None):
+    """(B,1,H,W) raw ADU -> log1p, per-image zero mean / unit std.
+    sat_value: pixels >= sat_value (65535 saturated/bad-pixel lines, never labelled as peaks) are set to 0 first."""
+    if sat_value:
+        x = torch.where(x >= sat_value, torch.zeros_like(x), x)
     x = torch.log1p(x.clamp(min=0.0, max=clip_max))
     m = x.mean(dim=(2, 3), keepdim=True)
     s = x.std(dim=(2, 3), keepdim=True).clamp(min=1e-3)
@@ -54,6 +60,32 @@ class HFUperNetPeak(nn.Module):
             pe.stride = (st, st)
             # keep 4x4 kernel; pad so output = ceil(H/st)
             pe.padding = ((4 - st) // 2, (4 - st) // 2) if st < 4 else (0, 0)
+        self.shuffle = None
+        if c["head"] == "shuffle":
+            old = self.net.decode_head.classifier
+            self.net.decode_head.classifier = nn.Conv2d(old.in_channels, st * st, kernel_size=1)
+            self.shuffle = nn.PixelShuffle(st)
+        # RetinaNet-style prior bias for a very sparse positive class (peaks ~1e-5 of pixels)
+        nn.init.constant_(self.net.decode_head.classifier.bias, float(c.get("prior_bias", -4.6)))
+
+    def load_state_dict(self, state_dict, strict=True, **kw):
+        """strict=False (seg.train --init-ckpt) also skips shape-mismatched keys, e.g. a 16-ch shuffle
+        classifier loaded into a stem_stride-2 model (4-ch). strict=True (evaluation) is unchanged."""
+        if not strict:
+            own = self.state_dict()
+            skipped = [k for k, v in state_dict.items() if k in own and own[k].shape != v.shape]
+            if skipped:
+                print("[hf_upernet] init: skipping shape-mismatched keys %s" % skipped, flush=True)
+            state_dict = {k: v for k, v in state_dict.items() if k not in skipped}
+        return super().load_state_dict(state_dict, strict=strict, **kw)
+
+    def param_groups(self, lr):
+        """Used by seg/train.py: pretrained backbone at lr * backbone_lr_mult, decoder/head at lr."""
+        mult = float(self.c.get("backbone_lr_mult", 0.5))
+        bb = [p for p in self.net.backbone.parameters() if p.requires_grad]
+        ids = {id(p) for p in bb}
+        rest = [p for p in self.parameters() if p.requires_grad and id(p) not in ids]
+        return [{"params": bb, "lr": lr * mult}, {"params": rest, "lr": lr}]
 
     def train(self, mode=True):
         # UperNet's pyramid-pooling module ends in BatchNorm after a 1x1 adaptive pool, which fails
@@ -68,12 +100,18 @@ class HFUperNetPeak(nn.Module):
         if x.dim() == 3:
             x = x[:, None]
         B, _, H, W = x.shape
-        x = normalize(x, self.c["clip_max"])
+        x = normalize(x, self.c["clip_max"], self.c.get("sat_value"))
         p = int(self.c["pad_multiple"])
         ph, pw = (-H) % p, (-W) % p
         if ph or pw:
             x = F.pad(x, (0, pw, 0, ph), mode="reflect")
         x = x.expand(-1, 3, -1, -1)
+        if self.shuffle is not None:
+            feats = self.net.backbone(pixel_values=x).feature_maps
+            logits = self.shuffle(self.net.decode_head(feats))
+            if logits.shape[-2:] != x.shape[-2:]:
+                logits = F.interpolate(logits, size=x.shape[-2:], mode="bilinear", align_corners=False)
+            return logits[..., :H, :W]
         out = self.net(pixel_values=x)
         logits = out.logits
         if self.training and getattr(out, "auxiliary_logits", None) is not None:

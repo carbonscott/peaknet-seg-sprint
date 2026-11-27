@@ -25,6 +25,26 @@
    "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h7/smp_r34_a/snap1_eval.log"
   },
   {
+   "statement": "hf_upernet",
+   "model": "UperNet (HF transformers) + ConvNeXt-tiny backbone, ADE20k-pretrained, 1-ch log1p/std adapter, PixelShuffle(4) full-res head, focal+dice",
+   "peak_f1": 0.8885877708433766,
+   "peak_precision": 0.8630507959808661,
+   "peak_recall": 0.9156820622986036,
+   "pixel_iou": 0.4943854846684677,
+   "pixel_f1": 0.6616572360218663,
+   "n_test_images": 1529,
+   "peak_tol_px": 3.0,
+   "threshold": 0.5,
+   "train_gpus": 1,
+   "train_wallclock_min": 89.84,
+   "upstream": [
+    "https://huggingface.co/openmmlab/upernet-convnext-tiny",
+    "https://github.com/huggingface/transformers"
+   ],
+   "checkpoint": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/checkpoints/h4/upn_a/best.pt",
+   "eval_log": "/sdf/data/lcls/ds/prj/prjcwang31/results/peaknet-seg-sprint/evals/h4/upn_a/eval_test.log"
+  },
+  {
    "statement": "lucid_unet",
    "model": "lucidrains x-unet XUnet 2D (dim 32, mults [1, 2, 4, 8], attn at 1/8 + mid), 1-ch asinh adapter, full-res head, focal_dice loss",
    "peak_f1": 0.8876012647062815,
