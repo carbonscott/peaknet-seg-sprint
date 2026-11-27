@@ -5,6 +5,7 @@ as-is; this file is glue only:
   * input adapter: 1-channel detector image -> robust per-image normalisation
     (median subtraction, fixed-scale asinh), XUnet built with channels=1, out_dim=1;
   * pad H, W to a multiple of 32 (XUnet downsamples 4x by 2) and crop logits back;
+  * run x-unet's 1-frame Conv3d layers as conv2d (same weights and maths, much faster);
   * swap x-unet's einsum attention for torch scaled_dot_product_attention (same maths,
     O(N) memory), so the 1/8- and 1/16-resolution attention fits at full 1920x1920.
 
@@ -28,6 +29,16 @@ DEFAULT_ARCH = dict(
     attn_heads=8,
     attn_dim_head=32,
 )
+
+
+def _conv2d_forward(self, x):
+    """Drop-in for an nn.Conv3d whose frame kernel is 1 on a 1-frame input: run it as conv2d
+    (same weights, same maths; cuDNN conv3d is much slower than conv2d)."""
+    if x.shape[2] != 1:
+        return F.conv3d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+    y = F.conv2d(x[:, :, 0], self.weight[:, :, 0], self.bias, self.stride[1:], self.padding[1:],
+                 self.dilation[1:], self.groups)
+    return y.unsqueeze(2)
 
 
 def _sdpa_attention_forward(self, x):
@@ -59,6 +70,11 @@ class LucidUNet(nn.Module):
             for m in self.net.modules():
                 if isinstance(m, Attention):
                     m.forward = types.MethodType(_sdpa_attention_forward, m)
+        if mcfg.get("conv2d_fastpath", True):
+            for m in self.net.modules():
+                if type(m) is nn.Conv3d and m.kernel_size[0] == 1 and m.stride[0] == 1 \
+                        and m.padding[0] == 0 and m.padding_mode == "zeros":
+                    m.forward = types.MethodType(_conv2d_forward, m)
         self.pad_mult = int(mcfg.get("pad_multiple", 32))
         self.norm_scale = float(mcfg.get("norm_scale", 32.0))  # detector ADU per asinh unit
         self.norm_div = float(mcfg.get("norm_div", 3.0))

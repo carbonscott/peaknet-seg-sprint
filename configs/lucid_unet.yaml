@@ -18,10 +18,10 @@ model:
   init_prior: 0.01
 train:
   crop: 512
-  batch_size: 8
+  batch_size: 6
   crops_per_image: 4
   pos_frac: 0.8
-  lr: 1.0e-3
+  lr: 6.0e-4
   weight_decay: 0.01
   max_steps: 20000
   warmup: 300
@@ -32,7 +32,7 @@ train:
   grad_clip: 1.0
   gain_jitter: 0.2
   rot90: true
-  val_tile: null
+  val_tile: 1024
   seed: 0
 loss:
   type: focal_dice
