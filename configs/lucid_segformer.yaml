@@ -9,3 +9,22 @@ model:
   refine: true
   refine_ch: 16
   prior: 0.01
+train:
+  crop: 512
+  batch_size: 16
+  crops_per_image: 4
+  pos_frac: 0.7
+  lr: 6.0e-4
+  weight_decay: 0.01
+  max_steps: 20000
+  warmup: 300
+  val_every: 1000
+  val_images: 200
+  num_workers: 8
+  amp: true
+  grad_clip: 1.0
+loss:
+  type: bce_dice
+  pos_weight: 10.0
+  w_main: 1.0
+  w_dice: 1.0
