@@ -40,5 +40,5 @@ loss:
   w_dice: 1.0
 # seg.evaluate: with no --thr/--val-thr, sweep these on val (every 2nd image) and report test at the best
 eval:
-  val_thr: [0.5, 0.7, 0.8, 0.9, 0.93, 0.95, 0.97, 0.98, 0.99, 0.995]
+  val_thr: [0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.998, 0.999, 0.9995]
   val_every: 2
