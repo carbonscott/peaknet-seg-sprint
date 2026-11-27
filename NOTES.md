@@ -33,3 +33,20 @@ One short dated entry per finding (PST).
   to >= .999 (scripts/val_grid.py) rather than the trainer's capped sweep. Saturated-pixel masking had no effect.
 - 03:50 Whole test, upn_a best.pt + flip-TTA, thr .5 from val: peak F1 0.8886 (P .863, R .916), pixel IoU .494.
   Eval cost: 4-flip full-res inference ~0.6 s/img on a shared L40S (1529 test imgs in 15.6 min).
+
+## infra + A-core (h1), 2026-11-27 PST
+
+- 01:30 `CUDNN_STATUS_NOT_INITIALIZED` at the first conv on every GPU was the shared venv, not the hardware:
+  CUDA-13 wheels (`cuda_toolkit` 13.2 via `cuda_bindings` 13.5) had overwritten torch 2.6+cu124's cu12 libraries in
+  `nvidia/cudnn`, `nvidia/nccl` and `nvidia/cusparselt` (same install paths). Fixed by reinstalling torch's pins
+  (`nvidia-cudnn-cu12==9.1.0.70`, `nvidia-nccl-cu12==2.21.5`, `nvidia-cusparselt-cu12==0.6.2`) with the constraints
+  file. Check: `torch.backends.cudnn.version()` must print 90100. Never install anything that pulls cu13 wheels.
+- 01:20 The `sdfada013` allocation has 72 CPUs and 288 GB for 6 GPUs: a step asking `--mem=90G` waits PENDING with
+  an empty log once memory is claimed. Use at most 10 CPUs / 40 GB per GPU step.
+- 01:45 `ops/sync_up.sh` does not copy `results/`; `seg.data.load_split` falls back to the durable manifest.
+- 02:05 Dead end: PeakNet with stem stride 2 plus upstream's learned ConvTranspose upsampler (pk_p2) gave val peak
+  F1 0.075 at step 1000 (precision 0.04): fragmented speckle false positives. Stopped; the stride-4 PeakNet (h2)
+  is the baseline.
+- 02:00 onward: every focal x10 + dice model picked the TOP of its threshold sweep (0.9, later 0.998) with recall
+  far above precision. Sweep val thresholds to 0.9999 before testing (`scripts/val_grid.py` does this in one pass,
+  together with flip-TTA and saturated-pixel masking).
