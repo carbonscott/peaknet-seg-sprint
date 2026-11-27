@@ -78,6 +78,7 @@ class LucidUNet(nn.Module):
         self.pad_mult = int(mcfg.get("pad_multiple", 32))
         self.norm_scale = float(mcfg.get("norm_scale", 32.0))  # detector ADU per asinh unit
         self.norm_div = float(mcfg.get("norm_div", 3.0))
+        self.sat_zero = float(mcfg.get("sat_zero", 0) or 0)  # e.g. 60000; 0 = off (xu_a..xu_d trained off)
         # bias the head toward "background" so early training is stable on ~1e-5 positives
         prior = float(mcfg.get("init_prior", 0.01))
         last = self.net.final_conv[-1]
@@ -89,6 +90,8 @@ class LucidUNet(nn.Module):
         flat = x.reshape(b, -1)
         sub = flat[:, :: max(1, flat.shape[1] // 65536)]
         med = sub.median(dim=1).values.view(b, 1, 1, 1)
+        if self.sat_zero:  # saturated / bad pixels (65535 lines at panel edges) -> background
+            x = torch.where(x >= self.sat_zero, med.expand_as(x), x)
         return torch.asinh((x - med) / self.norm_scale) / self.norm_div
 
     def forward(self, x):
