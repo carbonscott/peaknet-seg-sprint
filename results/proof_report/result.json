@@ -21,7 +21,7 @@
  ],
  "n_img": 33,
  "evidence": "results/proof_report/evidence.json",
- "built": "2026-11-27 12:34 UTC",
- "main_commit": "9e63239",
+ "built": "2026-11-27 12:35 UTC",
+ "main_commit": "86732d4",
  "notes": "All screenshots are S3DF artefacts (seg/viz.py overlays, scripts/proof_figs.py renders of squeue/logs/curves, independent re-evaluation)."
 }
