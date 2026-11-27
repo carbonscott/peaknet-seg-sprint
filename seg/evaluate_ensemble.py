@@ -21,7 +21,7 @@ import numpy as np
 
 from seg.evaluate import Accumulator, _load_ckpt, _load_yaml, _state_dict, _strip_prefix
 
-SWEEP = [round(x, 3) for x in np.arange(0.1, 0.951, 0.05)]
+SWEEP = [round(x, 3) for x in np.arange(0.1, 0.951, 0.05)] + [0.97, 0.98, 0.99]
 
 
 def load_member(spec, device):
