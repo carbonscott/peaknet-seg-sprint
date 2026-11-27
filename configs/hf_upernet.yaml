@@ -6,3 +6,4 @@ model:
   aux_head: false
   pad_multiple: 32
   clip_max: 65000.0
+  head: shuffle        # classifier emits 16 ch -> PixelShuffle(4) = learnable full-res logits
